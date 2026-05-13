@@ -12,6 +12,7 @@ from vibeops.core.auth import (
 )
 from vibeops.core.errors import AuthError
 from vibeops.core.secrets import (
+    is_multi_tenant_env,
     save_credentials_to_cache,
     set_gcp_project_id,
     set_gcp_sa_json,
@@ -289,6 +290,23 @@ def render_setup() -> None:
     with main:
         st.markdown('<div class="setup-wordmark">VIBEOPS</div>', unsafe_allow_html=True)
         st.markdown('<div class="setup-tagline">GPU · GCP · INFRASTRUCTURE</div>', unsafe_allow_html=True)
+
+        if is_multi_tenant_env():
+            st.markdown(
+                '<div style="display:flex;align-items:center;gap:10px;'
+                'border:1px solid rgba(0,222,255,0.3);'
+                'background:rgba(0,222,255,0.05);'
+                'border-radius:14px;padding:12px 18px;margin:0 auto 18px;'
+                'max-width:540px;font-size:12.5px;color:#d6d6d6;'
+                'font-family:\'JetBrains Mono\',monospace;line-height:1.5">'
+                '<span style="color:#00DEFF;font-size:16px">🔒</span>'
+                '<span>Your credentials stay in <strong>this browser session only</strong>. '
+                'They are never written to the server\'s disk and are discarded when '
+                'you close the tab. Other visitors cannot see them.</span>'
+                "</div>",
+                unsafe_allow_html=True,
+            )
+
         st.markdown(_stepper_html(current_step), unsafe_allow_html=True)
 
         # Render compact "done" rows for previously completed steps

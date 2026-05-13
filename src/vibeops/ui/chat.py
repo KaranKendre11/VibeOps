@@ -9,6 +9,7 @@ from vibeops.core.llm import LLMClient
 from vibeops.core.secrets import (
     clear_credentials_cache,
     get_or_create_graph_thread_id,
+    is_multi_tenant_env,
 )
 from vibeops.models.conversation import ConversationTurn, RequirementPhase, TurnRole
 from vibeops.models.state import GraphState
@@ -456,10 +457,18 @@ def _render_global_header() -> None:
 
     if st.session_state.get("show_settings", False):
         with st.expander("Credentials", expanded=True):
-            st.caption(
-                "Your credentials are cached in `~/.vibeops/credentials.json`. "
-                "Click **Reconfigure** to clear them and re-run setup."
-            )
+            if is_multi_tenant_env():
+                st.caption(
+                    "🔒 Your credentials live only in this browser session and "
+                    "are discarded when you close the tab. They are never "
+                    "stored on the server. Click **Reconfigure** to clear them now."
+                )
+            else:
+                st.caption(
+                    "Your credentials are cached locally at "
+                    "`~/.vibeops/credentials.json`. Click **Reconfigure** to "
+                    "clear them and re-run setup."
+                )
             project = st.session_state.get("gcp_project_id", "—")
             openai_key = st.session_state.get("openai_key", "")
             st.markdown(f"**GCP Project:** `{project}`")
