@@ -13,9 +13,10 @@ build/
 .mypy_cache/
 .pytest_cache/
 
-# Tests + dev docs (not needed in the runtime image)
+# Tests + dev docs + screenshots (not needed in the runtime image)
 tests/
 doc/
+screenshots/
 .streamlit/secrets.toml
 
 # Terraform working dirs (per-session tmpdirs, never shipped)

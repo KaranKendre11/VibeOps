@@ -28,6 +28,9 @@ vibeops-*/
 *service_account*.json
 *sa_key*.json
 
+# Private design docs / planning notes — never commit
+doc/
+
 # OS
 .DS_Store
 Thumbs.db

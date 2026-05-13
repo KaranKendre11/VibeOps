@@ -16,7 +16,7 @@ short_description: Natural language to a running GPU instance on GCP
 > Bring your own OpenAI key and GCP service-account JSON, describe what you want, and VibeOps takes care of the Terraform.
 
 <p align="center">
-  <img src="doc/screenshots/landing.png" alt="VibeOps landing page" width="900"/>
+  <img src="screenshots/landing.png" alt="VibeOps landing page" width="900"/>
 </p>
 
 ---
@@ -46,7 +46,7 @@ The system extracts the intent, asks plain-language follow-ups for anything miss
 - 🧹 **Local credential cache** — credentials live in `~/.vibeops/credentials.json` (never the server). One-click Reconfigure to wipe.
 
 <p align="center">
-  <img src="doc/screenshots/review.png" alt="VibeOps review screen with Terraform, spec, and cost estimate" width="900"/>
+  <img src="screenshots/review.png" alt="VibeOps review screen with Terraform, spec, and cost estimate" width="900"/>
 </p>
 
 ---
@@ -127,7 +127,7 @@ src/vibeops/
 └── ui/                 # chat, setup, review, deployment, vm_inventory, theme
 
 tests/                  # 370+ unit tests, optional live integration tests
-doc/                    # design docs + screenshots
+screenshots/            # README assets (LFS-tracked)
 app.py                  # Streamlit entry point
 Dockerfile              # HF Spaces image
 ```
