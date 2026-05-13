@@ -1,0 +1,39 @@
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Tools
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Terraform working dirs (per-session tmpfs, never committed)
+vibeops-*/
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Env / secrets (belt-and-suspenders — secrets never leave session_state anyway)
+.env
+.env.*
+*.pem
+*service_account*.json
+*sa_key*.json
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.suo
+*.user

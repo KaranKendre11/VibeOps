@@ -1,0 +1,29 @@
+output "instance_name" {
+  description = "Name of the created VM instance."
+  value       = google_compute_instance.gpu_vm.name
+}
+
+{% if public_ip %}
+output "external_ip" {
+  description = "External (NAT) IP address of the VM."
+  value       = google_compute_instance.gpu_vm.network_interface[0].access_config[0].nat_ip
+}
+
+{% for port in open_ports %}
+output "url_port_{{ port }}" {
+  description = "Public URL for port {{ port }}."
+  value       = "http://${google_compute_instance.gpu_vm.network_interface[0].access_config[0].nat_ip}:{{ port }}"
+}
+
+{% endfor %}
+{% endif %}
+
+output "ssh_command" {
+  description = "gcloud SSH command for the instance."
+  value       = "gcloud compute ssh ${google_compute_instance.gpu_vm.name} --zone {{ zone }} --project {{ project_id }}"
+}
+
+output "serial_console_command" {
+  description = "Command to tail the serial console (useful for debugging startup scripts)."
+  value       = "gcloud compute instances get-serial-port-output ${google_compute_instance.gpu_vm.name} --zone {{ zone }} --project {{ project_id }}"
+}

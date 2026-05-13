@@ -1,0 +1,72 @@
+[project]
+name = "vibeops"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = [
+  "streamlit>=1.40",
+  "langgraph>=0.2",
+  "langchain-core>=0.3",
+  "openai>=1.50",
+  "pydantic>=2.9",
+  "pydantic-settings>=2.5",
+  "google-cloud-compute>=1.20",
+  "google-cloud-resource-manager>=1.13",
+  "google-cloud-billing>=1.13",
+  "jinja2>=3.1",
+  "tiktoken>=0.7",
+  "python-hcl2>=8.1.2",
+]
+
+[dependency-groups]
+dev = [
+  "ruff>=0.6",
+  "mypy>=1.11",
+  "pytest>=8",
+  "pytest-mock>=3.14",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/vibeops"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B"]
+ignore = [
+  "UP045",  # Optional[X] needed for LangGraph config injection (X | None breaks it)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "E501", "N806", "N817"]
+
+[tool.mypy]
+strict = true
+python_version = "3.11"
+mypy_path = "src"
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = [
+  "google.cloud.*",
+  "google.oauth2.*",
+  "google.auth.*",
+  "google.api_core.*",
+  "streamlit.*",
+  "langgraph.*",
+  "langchain_core.*",
+  "hcl2",
+]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+markers = [
+  "live: marks tests as requiring live external services (skip with '-m not live')",
+]

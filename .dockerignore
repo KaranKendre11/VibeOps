@@ -1,0 +1,46 @@
+# Keep the Docker build context lean — only ship runtime essentials.
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+
+# Tooling caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# Tests + dev docs (not needed in the runtime image)
+tests/
+doc/
+.streamlit/secrets.toml
+
+# Terraform working dirs (per-session tmpdirs, never shipped)
+vibeops-*/
+*.tfstate
+*.tfstate.backup
+.terraform/
+.terraform.lock.hcl
+
+# Local secrets — belt + suspenders (these never leave session_state anyway)
+.env
+.env.*
+*.pem
+*service_account*.json
+*sa_key*.json
+
+# Git + IDE + OS
+.git/
+.github/
+.gitignore
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Docs that aren't needed in the image
+README.md
+LICENSE

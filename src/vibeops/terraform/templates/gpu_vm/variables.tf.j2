@@ -1,0 +1,70 @@
+variable "project_id" {
+  type        = string
+  description = "GCP project ID."
+}
+
+variable "region" {
+  type        = string
+  default     = "{{ region }}"
+  description = "GCP region derived from zone."
+}
+
+variable "zone" {
+  type        = string
+  default     = "{{ zone }}"
+  description = "GCP zone for the VM."
+}
+
+variable "instance_name" {
+  type        = string
+  default     = "vibeops-gpu-vm"
+  description = "Name of the Compute Engine instance."
+}
+
+variable "machine_type" {
+  type        = string
+  default     = "{{ machine_type }}"
+  description = "GCE machine type."
+}
+
+variable "gpu_type" {
+  type        = string
+  default     = "{{ gpu_type }}"
+  description = "Accelerator type (e.g. nvidia-tesla-t4)."
+}
+
+variable "gpu_count" {
+  type        = number
+  default     = {{ gpu_count }}
+  description = "Number of GPU accelerators."
+}
+
+variable "disk_size_gb" {
+  type        = number
+  default     = {{ disk_size_gb }}
+  description = "Boot disk size in GB."
+}
+
+variable "os_image_family" {
+  type        = string
+  default     = "{{ os_image_family }}"
+  description = "OS image family."
+}
+
+variable "os_image_project" {
+  type        = string
+  default     = "{{ os_image_project }}"
+  description = "GCP project that hosts the OS image."
+}
+
+variable "network_name" {
+  type        = string
+  default     = "{{ network_name }}"
+  description = "VPC network name."
+}
+
+variable "preemptible" {
+  type        = bool
+  default     = {{ preemptible | lower }}
+  description = "Whether the instance is preemptible."
+}
