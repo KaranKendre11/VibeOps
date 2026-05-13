@@ -147,7 +147,9 @@ Both can be cleared from any screen via **⚙ Settings → Reconfigure**.
 
 ## Live demo
 
-🚀 **Try it on Hugging Face Spaces:** *(link goes here once deployed)*
+🚀 **Try it on Hugging Face Spaces:** <https://huggingface.co/spaces/karankendre/VibeOps>
+
+First load may be slow (~30s wake-up if the Space has been idle). You'll need to paste your own OpenAI key and a GCP service-account JSON — both stay in your browser session and are never logged.
 
 ---
 
