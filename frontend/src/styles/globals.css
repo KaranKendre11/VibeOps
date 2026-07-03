@@ -24,6 +24,9 @@
   body,
   #root {
     height: 100%;
+    /* Paint the root/canvas dark too. Without this, html is transparent and the
+       vertical scrollbar's gutter/track shows the browser's white canvas. */
+    background-color: var(--bg);
   }
 
   body {
@@ -50,6 +53,13 @@
   *::-webkit-scrollbar {
     width: 10px;
     height: 10px;
+    background: transparent;
+  }
+  /* Styling the thumb but not the track makes Chromium fall back to a white track
+     (the "white bar on the right" when a page scrolls). Keep it transparent. */
+  *::-webkit-scrollbar-track,
+  *::-webkit-scrollbar-corner {
+    background: transparent;
   }
   *::-webkit-scrollbar-thumb {
     background: rgba(255,77,141, 0.28);

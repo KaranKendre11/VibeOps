@@ -56,10 +56,10 @@ export function LandingScreen({ onEnter }: LandingProps) {
       />
       <Hero entranceComplete={entranceComplete} onEnter={onEnter} />
       <CinematicText />
+      <Problem />
       <Metrics />
       <Capabilities />
-      <Architecture onEnter={onEnter} />
-      <Footer />
+      <Finale onEnter={onEnter} />
     </div>
   );
 }
@@ -332,9 +332,9 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
             animate={entranceComplete ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.2 }}
           >
-            Built at the intersection of natural language and cloud infrastructure. VibeOps turns a
-            plain-English request into reviewed Terraform and a running GPU VM on GCP — you describe
-            the change, review the plan, and approve.
+            VibeOps turns a plain-English request into reviewed Terraform and a running GPU VM on
+            GCP. You describe the change, review the plan, approve — it provisions, then tears it all
+            down on command.
           </motion.p>
           <motion.button
             type="button"
@@ -409,7 +409,108 @@ function CinematicText() {
 }
 
 // ---------------------------------------------------------------------------
-// Section 3 — Metrics
+// Section 3 — The problem (the manual grind VibeOps removes)
+// ---------------------------------------------------------------------------
+
+const MANUAL_STEPS = [
+  'Pick a machine type',
+  'Hunt for a zone with GPU quota',
+  'Find an OS image that ships CUDA',
+  'Hand-write the Terraform',
+  'Open the right firewall ports',
+  'terraform validate, then apply',
+  'SSH in and install your stack',
+  'Debug the startup script',
+  'Remember to tear it all down',
+] as const;
+
+function Problem() {
+  return (
+    <section className="relative flex min-h-screen items-center overflow-hidden bg-black px-6 py-28 sm:px-10 md:px-16">
+      {/* faint dot grid for texture between the two video sections */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)',
+          backgroundSize: '24px 24px',
+          opacity: 0.04,
+        }}
+      />
+      <div className="relative z-10 mx-auto w-full max-w-6xl">
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.9 }}
+        >
+          <p className="mb-6 text-[13px] uppercase tracking-[0.2em] text-white/40 sm:text-[14px]">
+            The problem
+          </p>
+          <h2 className="max-w-3xl text-[clamp(32px,6.5vw,64px)] font-light leading-[1.05] tracking-[-0.03em] text-white">
+            Nine steps to a GPU box.
+            <br />
+            Or one sentence.
+          </h2>
+        </motion.div>
+
+        <div className="mt-14 grid grid-cols-1 gap-12 md:mt-20 md:grid-cols-2 md:gap-16">
+          {/* The manual grind */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.9, delay: 0.1 }}
+          >
+            <p className="mb-6 text-[12px] uppercase tracking-[0.18em] text-white/30">The usual way</p>
+            <ul className="space-y-3.5">
+              {MANUAL_STEPS.map((s, i) => (
+                <li
+                  key={s}
+                  className="flex items-baseline gap-4 text-[14px] leading-snug text-white/45 sm:text-[15px]"
+                >
+                  <span className="w-5 shrink-0 text-right text-[12px] tabular-nums text-white/20">
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
+
+          {/* The VibeOps way */}
+          <motion.div
+            className="flex flex-col justify-center"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.3 }}
+            transition={{ duration: 0.9, delay: 0.25 }}
+          >
+            <p className="mb-6 text-[12px] uppercase tracking-[0.18em] text-white/30">With VibeOps</p>
+            <div className="rounded-xl border border-white/10 bg-white/[0.02] p-6 backdrop-blur-sm">
+              <div className="mb-4 flex items-center gap-1.5" aria-hidden>
+                <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+                <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+                <span className="h-2.5 w-2.5 rounded-full bg-white/15" />
+              </div>
+              <p className="text-[15px] leading-relaxed text-white/90 sm:text-[17px]">
+                <span className="text-white/40">$ </span>
+                deploy a jupyter box on a T4 with port 8888 open to the web
+              </p>
+            </div>
+            <p className="mt-6 text-[14px] leading-relaxed text-white/45 sm:text-[15px]">
+              You write one sentence. VibeOps handles the other nine — including the teardown you&rsquo;d
+              rather not forget.
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Section 4 — Metrics
 // ---------------------------------------------------------------------------
 
 const METRICS = [
@@ -465,21 +566,41 @@ function Metrics() {
 }
 
 // ---------------------------------------------------------------------------
-// Section 4 — Capabilities
+// Section 5 — Capabilities
 // ---------------------------------------------------------------------------
 
 const CAPABILITIES = [
-  { title: 'Natural Language', desc: 'Describe the change in plain English — no HCL required.' },
-  { title: 'Generated Terraform', desc: 'Produces reviewable, scoped infrastructure as code.' },
-  { title: 'Cost Preview', desc: 'Estimates spend and enforces your cost cap before any apply.' },
-  { title: 'Safe Teardown', desc: 'One command destroys everything and stops the meter.' },
+  {
+    title: 'Intent extraction',
+    desc: 'One LLM pass pulls GPU, ports, OS, and region from your words — and never re-asks what you already said.',
+  },
+  {
+    title: 'GPU-aware zones',
+    desc: 'Live GCP queries for accelerator stock and your project quota, ranked by free capacity.',
+  },
+  {
+    title: 'Editable Terraform',
+    desc: 'Generated HCL sits beside the spec. Edit it inline; it re-validates before deploy.',
+  },
+  {
+    title: 'Real cost estimates',
+    desc: 'Priced from GCP’s Cloud Catalog and capped at your monthly budget, with override.',
+  },
+  {
+    title: 'Firewall, startup & containers',
+    desc: '“port 443 running nginx” becomes a firewall rule, container metadata, and a clickable URL.',
+  },
+  {
+    title: 'Inventory & recovery',
+    desc: 'See every VM from any screen, tear down in bulk, and retry a new zone when quota runs out.',
+  },
 ] as const;
 
 function Capabilities() {
   return (
     <section
       id="capabilities"
-      className="relative flex h-screen min-h-[100dvh] flex-col overflow-hidden px-8 py-12 sm:px-12 sm:py-16 md:px-16"
+      className="relative flex min-h-screen flex-col overflow-hidden px-8 py-24 sm:px-12 sm:py-28 md:px-16"
     >
       <video
         src={VIDEOS.tech}
@@ -520,7 +641,7 @@ function Capabilities() {
       <div className="relative z-10 flex-1" />
 
       <motion.div
-        className="relative z-10 grid grid-cols-2 gap-8 md:grid-cols-4 md:gap-6"
+        className="relative z-10 grid grid-cols-2 gap-x-8 gap-y-10 md:grid-cols-3 md:gap-x-10 md:gap-y-12"
         initial={{ opacity: 0 }}
         whileInView={{ opacity: 1 }}
         viewport={{ once: true, amount: 0.2 }}
@@ -544,103 +665,140 @@ function Capabilities() {
 }
 
 // ---------------------------------------------------------------------------
-// Section 5 — Architecture (pure black)
+// Section 6 — How it works + close (the pipeline pinned beside the llama)
 // ---------------------------------------------------------------------------
 
-const LAYERS = [
-  { n: 'Step 1', name: 'Describe' },
-  { n: 'Step 2', name: 'Plan' },
-  { n: 'Step 3', name: 'Apply' },
+const STAGES = [
+  {
+    name: 'Understand',
+    desc: 'One LLM pass pulls every detail from your words — GPU, ports, OS, region — then asks plain-language follow-ups for anything still missing.',
+  },
+  {
+    name: 'Locate',
+    desc: 'Live GCP lookups for accelerator availability and your project quota, ranked by free capacity, so the box lands where there is room.',
+  },
+  {
+    name: 'Generate',
+    desc: 'Renders valid, scoped Terraform — firewall rules, startup scripts, and containers included. Edit the HCL inline before anything runs.',
+  },
+  {
+    name: 'Price',
+    desc: 'Estimates monthly cost from GCP’s Cloud Catalog and holds it against your cap. Over budget fails closed unless you override.',
+  },
+  {
+    name: 'Deploy',
+    desc: 'Checks the plan against a resource allowlist, then applies — only after you approve. The live log streams as resources come up.',
+  },
+  {
+    name: 'Live',
+    desc: 'Hands back a clickable URL the moment the box is up. One click tears everything down and stops the meter.',
+  },
 ] as const;
 
-function Architecture({ onEnter }: { onEnter: () => void }) {
+function Finale({ onEnter }: { onEnter: () => void }) {
   return (
-    <section className="relative min-h-screen bg-black px-6 py-32">
-      <div className="mx-auto max-w-3xl text-center">
+    <section id="how" className="relative bg-black md:flex md:items-stretch">
+      {/* The llama asset — a banner on mobile, pinned beside the pipeline on desktop */}
+      <div className="relative w-full md:w-1/2">
+        <div className="relative h-[38vh] overflow-hidden md:sticky md:top-0 md:h-screen">
+          <video
+            src={VIDEOS.footer}
+            autoPlay
+            muted
+            loop
+            playsInline
+            className="h-full w-full object-cover"
+          />
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent md:bg-gradient-to-r md:from-transparent md:via-black/5 md:to-black"
+          />
+        </div>
+      </div>
+
+      {/* How it works + close */}
+      <div className="relative w-full px-6 py-20 sm:px-10 md:w-1/2 md:px-14 md:py-24">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 1.0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.9 }}
         >
-          <p className="mb-8 text-[13px] uppercase tracking-[0.2em] text-white/40 sm:text-[14px]">
+          <p className="mb-6 text-[13px] uppercase tracking-[0.2em] text-white/40 sm:text-[14px]">
             How it works
           </p>
-          <h2 className="mb-10 text-[clamp(28px,6vw,56px)] font-light leading-[1.15] tracking-[-0.02em] text-white">
-            Three steps. Full control.
+          <h2 className="text-[clamp(28px,4.5vw,48px)] font-light leading-[1.05] tracking-[-0.03em] text-white">
+            One sentence in.
+            <br />
+            A running box out.
           </h2>
-          <p className="mx-auto max-w-xl text-[15px] leading-relaxed text-white/45 sm:text-[17px]">
-            Describe your intent in plain English. VibeOps generates and prices the Terraform. It
-            provisions on GCP — only after you approve. Tear it all down when you're done.
+          <p className="mt-6 max-w-md text-[14px] leading-relaxed text-white/45 sm:text-[16px]">
+            Every request runs the same six-stage pipeline. The agent pauses for you at each
+            decision — nothing touches your cloud until you approve.
           </p>
+
+          <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
+            <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-white/30">Your prompt</p>
+            <p className="text-[15px] leading-relaxed text-white/90 sm:text-[18px]">
+              <span className="text-white/40">&gt; </span>
+              Jupyter notebook on a T4 with port 8888 open to the web
+            </p>
+          </div>
         </motion.div>
 
-        <motion.div
-          className="mt-20 flex flex-col items-center gap-4"
-          initial={{ opacity: 0 }}
-          whileInView={{ opacity: 1 }}
-          viewport={{ once: true, amount: 0.4 }}
-          transition={{ duration: 1.2, delay: 0.4 }}
-        >
-          {LAYERS.map((l) => (
-            <div
-              key={l.n}
-              className="flex h-[72px] w-full max-w-md items-center justify-between rounded-lg border border-white/10 px-6"
+        <div className="relative mt-12 border-l border-white/10 pl-8">
+          {STAGES.map((s, i) => (
+            <motion.div
+              key={s.name}
+              className="relative pb-10 last:pb-0"
+              initial={{ opacity: 0, x: 20 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true, amount: 0.5 }}
+              transition={{ duration: 0.6, delay: i * 0.06 }}
             >
-              <span className="text-[12px] uppercase tracking-[0.15em] text-white/30">{l.n}</span>
-              <span className="text-[16px] font-light text-white sm:text-[18px]">{l.name}</span>
-            </div>
+              <span className="absolute -left-8 top-1.5 -translate-x-1/2" aria-hidden>
+                <span className="block h-2 w-2 rounded-full bg-white/50 ring-4 ring-black" />
+              </span>
+              <div className="flex items-baseline gap-4">
+                <span className="text-[12px] tracking-[0.15em] text-white/30">
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+                <span className="text-[17px] font-light text-white sm:text-[20px]">{s.name}</span>
+              </div>
+              <p className="mt-2 text-[13px] leading-relaxed text-white/45 sm:text-[14px]">
+                {s.desc}
+              </p>
+            </motion.div>
           ))}
-        </motion.div>
+        </div>
 
         <motion.button
           type="button"
           onClick={onEnter}
-          className="mt-16 rounded-full bg-white px-8 py-3.5 text-[15px] font-medium text-black"
+          className="mt-12 rounded-full bg-white px-8 py-3.5 text-[15px] font-medium text-black"
           initial={{ opacity: 0 }}
           whileInView={{ opacity: 1 }}
           viewport={{ once: true, amount: 0.5 }}
-          transition={{ duration: 0.8, delay: 0.6 }}
+          transition={{ duration: 0.8, delay: 0.2 }}
           whileHover={{ scale: 1.03, backgroundColor: '#e2e2e6' }}
           whileTap={{ scale: 0.97 }}
         >
           Try it →
         </motion.button>
-      </div>
-    </section>
-  );
-}
 
-// ---------------------------------------------------------------------------
-// Footer
-// ---------------------------------------------------------------------------
-
-function Footer() {
-  return (
-    <footer className="flex min-h-[400px] flex-col overflow-hidden bg-black md:flex-row">
-      <div className="md:w-1/2">
-        <video
-          src={VIDEOS.footer}
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="h-[300px] w-full object-cover md:h-full"
-        />
-      </div>
-      <div className="flex flex-col justify-between p-10 sm:p-16 md:w-1/2">
-        <div>
-          <div className="mb-8 flex items-center gap-3 text-white/70">
-            <BrandIcon size={44} />
-            <span className="text-[17px] font-medium tracking-tight">VibeOps</span>
+        {/* Close — brand, tagline, copyright, folded in beside the llama */}
+        <div className="mt-20 border-t border-white/10 pt-8">
+          <div className="mb-4 flex items-center gap-3 text-white/70">
+            <BrandIcon size={40} />
+            <span className="text-[16px] font-medium tracking-tight">VibeOps</span>
           </div>
-          <p className="max-w-sm text-[14px] leading-relaxed text-white/40 sm:text-[15px]">
+          <p className="max-w-sm text-[13px] leading-relaxed text-white/40 sm:text-[14px]">
             The AI agent that safely operates your cloud. Describe the change, review the plan,
             approve — done.
           </p>
+          <p className="mt-8 text-[12px] text-white/25">© 2026 VibeOps. All rights reserved.</p>
         </div>
-        <p className="mt-12 text-[12px] text-white/25">© 2026 VibeOps. All rights reserved.</p>
       </div>
-    </footer>
+    </section>
   );
 }

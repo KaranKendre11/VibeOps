@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **"The problem" section on the marketing landing page (2026-07-03).** A new
+  section contrasts the nine-step manual grind of standing up a GPU VM (pick a
+  machine type, hunt for a zone with GPU quota, hand-write the Terraform, open
+  firewall ports, remember to tear it all down…) against a single plain-English
+  sentence, shown in a terminal-style prompt card — so the page actually explains
+  the pain VibeOps removes. (`frontend/src/landing/LandingScreen.tsx`)
+- **Full six-stage pipeline on the landing page (2026-07-03).** The thin
+  three-step "How it works" was replaced by the real pipeline —
+  Understand → Locate → Generate → Price → Deploy → Live — each stage with a
+  proper description and the worked example *"Jupyter notebook on a T4 with port
+  8888 open to the web."* This pipeline and the site footer were merged into one
+  closing section: on desktop the llama video pins on the left while the pipeline
+  and brand/footer scroll on the right (retiring the old standalone step section
+  and the separate footer). (`frontend/src/landing/LandingScreen.tsx`)
+- **Richer README with screenshots (2026-07-03).** `README.md` was rewritten to
+  tell the full story — the problem, the six-stage pipeline, a "See it in action"
+  demo walkthrough, and capabilities — with 8 embedded screenshots of the landing
+  page, setup, review, deployment, and VM inventory. New assets `setup.png`,
+  `deployment.png`, `inventory.png`, `landing-problem.png`, `landing-finale.png`,
+  and `landing-capabilities.png` were added, and `landing.png` and `review.png`
+  were refreshed. (`README.md`, `screenshots/`)
+
+### Changed
+
+- **Landing capabilities grid expanded from 4 vague cards to 6 specific ones
+  (2026-07-03).** Intent extraction, GPU-aware zones, Editable Terraform, Real
+  cost estimates, Firewall/startup & containers, and Inventory & recovery — with
+  the hero subhead copy tightened alongside.
+  (`frontend/src/landing/LandingScreen.tsx`)
+
+### Fixed
+
+- **White vertical bar on the right whenever a page scrolled, on Chromium
+  (2026-07-03).** The custom `::-webkit-scrollbar` styled only the thumb, so
+  Chromium fell back to painting the track white, and the `<html>` element had no
+  background so the scrollbar gutter showed the browser's white canvas (it
+  appeared to come and go as the window aspect ratio changed). `html`/`#root` are
+  now painted with the app background, and the scrollbar track/corner are
+  transparent. (`frontend/src/styles/globals.css`)
+
 ## [2.0.1] - 2026-07-03
 
 ### Fixed
