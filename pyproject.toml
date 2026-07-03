@@ -1,9 +1,8 @@
 [project]
 name = "vibeops"
-version = "0.1.0"
+version = "2.0.0"
 requires-python = ">=3.11"
 dependencies = [
-  "streamlit>=1.40",
   "langgraph>=0.2",
   "langchain-core>=0.3",
   "openai>=1.50",
@@ -15,6 +14,8 @@ dependencies = [
   "jinja2>=3.1",
   "tiktoken>=0.7",
   "python-hcl2>=8.1.2",
+  "fastapi>=0.139.0",
+  "uvicorn[standard]>=0.46.0",
 ]
 
 [dependency-groups]
@@ -23,6 +24,7 @@ dev = [
   "mypy>=1.11",
   "pytest>=8",
   "pytest-mock>=3.14",
+  "httpx>=0.28.1",
 ]
 
 [build-system]
@@ -44,6 +46,11 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**" = ["ANN", "E501", "N806", "N817"]
+# UI layer is largely inline HTML/CSS/SVG string literals; line-length is not meaningful there.
+"src/vibeops/ui/**" = ["E501"]
+# Long prompt text and regex patterns held as string constants.
+"src/vibeops/agents/requirement_prompts.py" = ["E501"]
+"src/vibeops/terraform/error_parser.py" = ["E501"]
 
 [tool.mypy]
 strict = true
@@ -57,7 +64,6 @@ module = [
   "google.oauth2.*",
   "google.auth.*",
   "google.api_core.*",
-  "streamlit.*",
   "langgraph.*",
   "langchain_core.*",
   "hcl2",
@@ -69,4 +75,5 @@ testpaths = ["tests"]
 addopts = "-ra"
 markers = [
   "live: marks tests as requiring live external services (skip with '-m not live')",
+  "expensive: marks tests that incur real cloud cost (a subset of live)",
 ]

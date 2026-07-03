@@ -3,7 +3,7 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from vibeops.agents.deployment import deployment_agent
-from vibeops.models.deployment import ApplyResult, DeploymentOutcome, DeploymentPhase, PlanResult
+from vibeops.models.deployment import DeploymentOutcome, DeploymentPhase, PlanResult
 from vibeops.models.state import FlowStage, GraphState
 from vibeops.terraform.errors import TerraformApplyError
 

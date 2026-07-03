@@ -9,9 +9,6 @@ from vibeops.cost.cloud_catalog import estimate_from_catalog
 from vibeops.cost.pricing_constants import (
     GPU_HOURLY_USD,
     HOURS_PER_MONTH,
-    N1_CPU_HOURLY_USD,
-    N1_RAM_GB_HOURLY_USD,
-    PD_SSD_GB_MONTHLY_USD,
     PREEMPTIBLE_DISCOUNT,
 )
 from vibeops.models.spec import ComputeSpec, DeploymentSpec, GpuType, NetworkSpec, StorageSpec

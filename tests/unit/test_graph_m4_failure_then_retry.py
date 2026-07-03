@@ -5,7 +5,13 @@ from typing import Any
 from unittest.mock import patch
 
 from vibeops.graph.orchestrator import build_graph
-from vibeops.models.deployment import ApplyResult, DeploymentOutcome, DeploymentPhase, PlanResult, StateResource
+from vibeops.models.deployment import (
+    ApplyResult,
+    DeploymentOutcome,
+    DeploymentPhase,
+    PlanResult,
+    StateResource,
+)
 from vibeops.models.iac import TerraformValidationResult
 from vibeops.models.state import GraphState
 from vibeops.terraform.errors import TerraformApplyError

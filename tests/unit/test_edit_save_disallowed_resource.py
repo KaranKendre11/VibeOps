@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from vibeops.models.iac import AllowlistResult, TerraformValidationResult, Violation
 from vibeops.models.state import FlowStage, GraphState
-from vibeops.ui.review import apply_user_edit
+from vibeops.services.review import apply_user_edit
 
 _ORIGINAL = 'resource "google_compute_instance" "gpu_vm" { name = "ok" }\n'
 
@@ -38,10 +38,10 @@ class TestEditSaveDisallowedResource:
         violation = Violation(resource_type="google_project_iam_binding", line_number=0)
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=AllowlistResult(ok=False, violations=[violation]),
         ):
             new_state, err = apply_user_edit(state, "main.tf", _WITH_IAM)
@@ -55,10 +55,10 @@ class TestEditSaveDisallowedResource:
         violation = Violation(resource_type="google_project_iam_binding", line_number=0)
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=AllowlistResult(ok=False, violations=[violation]),
         ):
             new_state, _ = apply_user_edit(state, "main.tf", _WITH_IAM)
@@ -70,10 +70,10 @@ class TestEditSaveDisallowedResource:
         violation = Violation(resource_type="google_project_iam_binding", line_number=0)
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=AllowlistResult(ok=False, violations=[violation]),
         ):
             apply_user_edit(state, "main.tf", _WITH_IAM)
@@ -85,10 +85,10 @@ class TestEditSaveDisallowedResource:
         violation = Violation(resource_type="google_storage_bucket", line_number=0)
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=AllowlistResult(ok=False, violations=[violation]),
         ):
             _, err = apply_user_edit(state, "main.tf", _WITH_IAM)
@@ -106,10 +106,10 @@ class TestEditSaveDisallowedResource:
         valid_vars = 'variable "project_id" { type = string }\n'
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
-        ) as mock_validate, patch(
-            "vibeops.ui.review.check_resource_allowlist"
+        ), patch(
+            "vibeops.services.review.check_resource_allowlist"
         ) as mock_al:
             new_state, err = apply_user_edit(state, "variables.tf", valid_vars)
 

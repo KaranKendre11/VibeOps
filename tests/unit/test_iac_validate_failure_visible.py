@@ -2,12 +2,10 @@ from __future__ import annotations
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from vibeops.models.iac import TerraformValidationResult
 from vibeops.models.spec import ComputeSpec, DeploymentSpec, GpuType, NetworkSpec, StorageSpec
 from vibeops.models.state import FlowStage, GraphState
-from vibeops.terraform.runner import TerraformInitError, TerraformValidateError
+from vibeops.terraform.runner import TerraformInitError
 
 
 def _spec() -> DeploymentSpec:

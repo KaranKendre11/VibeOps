@@ -10,7 +10,6 @@ from vibeops.agents.deployment import deployment_agent, destroy_agent
 from vibeops.agents.iac import iac_agent
 from vibeops.agents.requirement import requirement_agent
 from vibeops.models.conversation import RequirementPhase
-from vibeops.models.deployment import DeploymentPhase
 from vibeops.models.state import FlowStage, GraphState
 
 

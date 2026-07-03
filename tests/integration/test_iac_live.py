@@ -38,10 +38,9 @@ def _spec() -> DeploymentSpec:
 @pytest.mark.live
 def test_iac_live_no_fragment(tmp_path: Path) -> None:
     """Real LLM + terraform validate + infracost (or fallback)."""
-    import openai
 
-    from vibeops.core.llm import LLMClient
     from vibeops.agents.iac import _real_pipeline
+    from vibeops.core.llm import LLMClient
     from vibeops.models.state import FlowStage, GraphState
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -61,9 +60,8 @@ def test_iac_live_fragment(tmp_path: Path) -> None:
     """Real LLM generates a startup-script fragment using quality='high'."""
     import os
 
-    from vibeops.core.llm import LLMClient
     from vibeops.agents.iac import _real_pipeline
-    from vibeops.models.spec import ComputeSpec, DeploymentSpec, GpuType, NetworkSpec, StorageSpec
+    from vibeops.core.llm import LLMClient
     from vibeops.models.state import FlowStage, GraphState
 
     api_key = os.environ.get("OPENAI_API_KEY")
@@ -99,7 +97,6 @@ def test_cost_real_pricing(tmp_path: Path) -> None:
     Drift > 15% from $411/mo is a bug worth investigating.
     """
     from vibeops.cost import estimate as cost_estimate_fn
-
     from vibeops.terraform.render import render_templates
 
     render_templates(_spec(), tmp_path)

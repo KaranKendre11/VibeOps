@@ -42,7 +42,7 @@ def test_destroy_node_unreachable_without_confirmation(mocker: MagicMock) -> Non
     from vibeops.models.iac import TerraformValidationResult
 
     destroy_spy = mocker.patch("vibeops.agents.deployment.destroy_agent")
-    deploy_mock = mocker.patch(
+    mocker.patch(
         "vibeops.agents.deployment.deployment_agent",
         return_value=GraphState(
             user_prompt="test",

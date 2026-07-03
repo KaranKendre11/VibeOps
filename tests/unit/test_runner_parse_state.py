@@ -6,7 +6,6 @@ from unittest.mock import MagicMock, patch
 
 from vibeops.terraform.runner import parse_state_resources
 
-
 _SHOW_OUTPUT = json.dumps({
     "values": {
         "root_module": {

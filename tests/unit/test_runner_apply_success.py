@@ -21,7 +21,7 @@ def test_apply_calls_on_log_for_each_line(tmp_path: Path) -> None:
     logged: list[str] = []
 
     with patch("vibeops.terraform.runner.subprocess.Popen", return_value=_make_streaming_proc(lines)):
-        result = apply(tmp_path, on_log=logged.append)
+        apply(tmp_path, on_log=logged.append)
 
     assert logged == lines
 

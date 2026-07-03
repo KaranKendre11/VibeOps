@@ -17,7 +17,6 @@ from vibeops.models.results import Network
 from vibeops.models.spec import DeploymentSpec, GpuType
 from vibeops.models.state import FlowStage, GraphState
 
-
 _RESOLVED_OS = ("deeplearning-platform-release", "common-cu121")
 
 

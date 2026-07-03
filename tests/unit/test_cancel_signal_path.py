@@ -8,8 +8,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from vibeops.terraform.runner import apply
 from vibeops.terraform.errors import TerraformApplyError
+from vibeops.terraform.runner import apply
 
 
 def test_cancel_event_triggers_sigint(tmp_path: Path) -> None:

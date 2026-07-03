@@ -427,15 +427,16 @@ def _parse_extended(data: dict[str, Any]) -> PartialRequirementExtended:
         if val is None or val == "null":
             return None
         try:
-            return cls(val)
+            member: object = cls(val)
         except (ValueError, KeyError):
             return None
+        return member
 
     def _safe_int(val: object) -> int | None:
-        if val is None or val == "null":
+        if not isinstance(val, (int, float, str)):
             return None
         try:
-            return int(val)  # type: ignore[arg-type]
+            return int(val)
         except (ValueError, TypeError):
             return None
 

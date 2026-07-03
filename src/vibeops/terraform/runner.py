@@ -10,7 +10,6 @@ import sys
 import threading
 from collections.abc import Callable
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 from vibeops.models.deployment import ApplyResult, DestroyResult, PlanResult, StateResource
 from vibeops.models.iac import TerraformValidationResult

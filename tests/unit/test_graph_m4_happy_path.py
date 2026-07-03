@@ -9,7 +9,13 @@ from vibeops.core.gcp_context import GcpContext
 from vibeops.core.llm import LLMClient
 from vibeops.graph.orchestrator import build_graph
 from vibeops.models.conversation import ConversationTurn, RequirementPhase, TurnRole
-from vibeops.models.deployment import ApplyResult, DeploymentOutcome, DeploymentPhase, PlanResult, StateResource
+from vibeops.models.deployment import (
+    ApplyResult,
+    DeploymentOutcome,
+    DeploymentPhase,
+    PlanResult,
+    StateResource,
+)
 from vibeops.models.iac import TerraformValidationResult
 from vibeops.models.results import (
     MachineType,
@@ -20,8 +26,7 @@ from vibeops.models.results import (
     ZoneAvailability,
     ZonesWithAcceleratorResult,
 )
-from vibeops.models.state import FlowStage, GraphState
-
+from vibeops.models.state import GraphState
 
 _RESOLVED_OS = ("deeplearning-platform-release", "common-cu121")
 

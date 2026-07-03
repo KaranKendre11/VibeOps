@@ -109,7 +109,13 @@ class TestDeploymentStub:
 
     def test_deployment_succeeds_with_mocked_runner(self) -> None:
         from unittest.mock import patch
-        from vibeops.models.deployment import ApplyResult, DeploymentOutcome, DeploymentPhase, PlanResult
+
+        from vibeops.models.deployment import (
+            ApplyResult,
+            DeploymentOutcome,
+            DeploymentPhase,
+            PlanResult,
+        )
 
         state = self._setup()
         with (
@@ -124,6 +130,7 @@ class TestDeploymentStub:
 
     def test_input_state_unmutated(self) -> None:
         from unittest.mock import patch
+
         from vibeops.models.deployment import ApplyResult, PlanResult
 
         state = self._setup()

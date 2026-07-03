@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 from vibeops.graph.orchestrator import build_graph
 from vibeops.models.deployment import (
-    ApplyResult,
     DeploymentOutcome,
     DeploymentPhase,
     DestroyResult,

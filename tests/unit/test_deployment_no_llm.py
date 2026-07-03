@@ -3,7 +3,13 @@ from __future__ import annotations
 from unittest.mock import MagicMock, patch
 
 from vibeops.agents.deployment import deployment_agent, destroy_agent
-from vibeops.models.deployment import ApplyResult, DeploymentPhase, DestroyResult, PlanResult, StateResource
+from vibeops.models.deployment import (
+    ApplyResult,
+    DeploymentPhase,
+    DestroyResult,
+    PlanResult,
+    StateResource,
+)
 from vibeops.models.state import FlowStage, GraphState
 
 

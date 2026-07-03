@@ -30,6 +30,17 @@ vibeops-*/
 
 # Private design docs / planning notes — never commit
 doc/
+YC_APPLICATION.md
+
+# Browser E2E test screenshots (feature-completion workflow)
+test-artifacts/
+
+# Local tooling artifacts / scratch
+.playwright-mcp/
+src.zip
+
+# Design sources (not needed at runtime; HF Spaces rejects non-LFS binaries)
+*.aep
 
 # OS
 .DS_Store

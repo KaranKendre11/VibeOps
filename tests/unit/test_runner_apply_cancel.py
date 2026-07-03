@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 import signal
 import threading
 from pathlib import Path

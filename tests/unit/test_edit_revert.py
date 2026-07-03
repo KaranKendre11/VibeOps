@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from vibeops.models.iac import TerraformValidationResult
 from vibeops.models.state import FlowStage, GraphState
-from vibeops.ui.review import apply_user_edit
+from vibeops.services.review import apply_user_edit
 
 _ORIGINAL = 'resource "google_compute_instance" "gpu_vm" { name = "original" }\n'
 _EDIT_1 = 'resource "google_compute_instance" "gpu_vm" { name = "edit-one" }\n'
@@ -33,10 +33,10 @@ class TestEditRevert:
     def test_revert_after_single_edit(self, tmp_path: Path) -> None:
         """After one edit, reverting restores original_files content."""
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=__import__("unittest.mock", fromlist=["MagicMock"]).MagicMock(
                 ok=True, violations=[]
             ),
@@ -53,10 +53,10 @@ class TestEditRevert:
     def test_revert_after_multiple_edits_restores_generated(self, tmp_path: Path) -> None:
         """Revert always goes back to the originally generated content, not the previous edit."""
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=__import__("unittest.mock", fromlist=["MagicMock"]).MagicMock(
                 ok=True, violations=[]
             ),
@@ -75,10 +75,10 @@ class TestEditRevert:
     def test_terraform_files_original_never_changes(self, tmp_path: Path) -> None:
         """apply_user_edit must not mutate terraform_files_original."""
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=__import__("unittest.mock", fromlist=["MagicMock"]).MagicMock(
                 ok=True, violations=[]
             ),

@@ -7,13 +7,13 @@ sdk: docker
 app_port: 7860
 pinned: false
 license: mit
-short_description: Natural language to a running GPU instance on GCP
+short_description: An AI agent that safely operates your cloud
 ---
 
 # VibeOps
 
-> **Natural language → a running GPU VM on Google Cloud, in minutes.**
-> Bring your own OpenAI key and GCP service-account JSON, describe what you want, and VibeOps takes care of the Terraform.
+> **An AI agent that safely operates your cloud — describe the change, review the plan, approve, done.**
+> Today it provisions and tears down GPU VMs on GCP (the beachhead). Describe what you want in plain English; VibeOps turns your request into a reviewed Terraform plan, enforces a resource-type allowlist, shows you a cost estimate, and only touches your cloud after you approve.
 
 <p align="center">
   <img src="screenshots/landing.png" alt="VibeOps landing page" width="900"/>
@@ -55,13 +55,14 @@ The system extracts the intent, asks plain-language follow-ups for anything miss
 
 | Layer | Tech |
 |---|---|
-| UI | Streamlit + custom CSS theme (aerukart-inspired cyan-on-black) |
+| Frontend | React 18 + TypeScript + Tailwind + Framer Motion (Vite), cyan-on-black theme |
+| API / server | FastAPI + Uvicorn — serves the SPA and the JSON/SSE API on one port |
 | Orchestration | LangGraph state machine with interrupt-driven pauses |
 | LLM | OpenAI (configurable model; gpt-4o-mini for chat, gpt-4o for HCL fragments) |
 | IaC | Terraform + Jinja2 templates with conditional firewall / startup / container blocks |
 | GCP client | `google-cloud-compute`, `google-cloud-resource-manager`, `google-cloud-billing` |
-| State | Pydantic models, in-memory LangGraph checkpointer |
-| Tests | pytest, 370+ unit tests, optional live-integration suite |
+| State | Pydantic models, in-memory LangGraph checkpointer + per-session server store |
+| Tests | pytest (backend, 410+ unit tests) + Vite build / tsc / eslint (frontend) |
 
 ---
 
@@ -71,20 +72,25 @@ The system extracts the intent, asks plain-language follow-ups for anything miss
 git clone https://github.com/<your-username>/vibeops.git
 cd vibeops
 
-# Python 3.11+ required. uv is fastest:
+# Backend (Python 3.11+):
 python -m pip install uv
-python -m uv venv && source .venv/bin/activate     # or .venv\Scripts\activate on Windows
-python -m uv pip install -e .
+python -m uv sync
+
+# Frontend (Node 18+):
+cd frontend && npm install && npm run build && cd ..
 
 # Terraform CLI required on PATH:
 # macOS:    brew install terraform
 # Windows:  winget install Hashicorp.Terraform
 # Linux:    https://developer.hashicorp.com/terraform/install
 
-streamlit run app.py
+# Run everything (built SPA + API on one port):
+python -m uv run uvicorn vibeops.api.main:app --port 8000
 ```
 
-Open <http://localhost:8501>, paste your OpenAI key and a GCP service-account JSON with `compute.admin` + `resourcemanager.projects.get` on at least one project. You're in.
+Open <http://localhost:8000>, paste your OpenAI key and a GCP service-account JSON with `compute.admin` + `resourcemanager.projects.get` on at least one project — or click **Try the live demo** to explore with no credentials.
+
+For frontend hot-reload during development: run the API (`uvicorn … --port 8000`) and, in another shell, `cd frontend && npm run dev` (Vite proxies `/api` → `:8000`); open the Vite dev URL.
 
 ---
 
@@ -105,8 +111,8 @@ flowchart LR
 
 Key design choices:
 
-- **The LangGraph state is the single source of truth.** Streamlit's session_state is a thin cache layer; everything that matters lives in `GraphState`.
-- **`interrupt_before` pauses the graph mid-flow.** UI screens read the paused state, collect user input, write back via `graph.update_state(... as_node=...)`, then resume with `graph.invoke(None, ...)`.
+- **The LangGraph state is the single source of truth.** The API's in-memory per-session store is a thin cache; everything that matters lives in `GraphState`.
+- **`interrupt_before` pauses the graph mid-flow.** The API reads the paused state, collects input from the React client, writes back via `graph.update_state(... as_node=...)`, then resumes with `graph.invoke(None, ...)`.
 - **Architecture is deterministic, not LLM-driven.** GCP zone + quota lookups are concurrent (ThreadPoolExecutor), candidates are ranked by free capacity. The LLM only handles the conversational requirement gathering.
 - **Resource allowlist policy.** Generated Terraform is parsed and checked against `ALLOWED_RESOURCE_TYPES = {compute_instance, compute_disk, compute_attached_disk, compute_firewall}` before apply. No surprises.
 - **Cost cap with override.** Hard fail above your configured monthly cap unless you tick the override checkbox.
@@ -117,19 +123,19 @@ Key design choices:
 
 ```
 src/vibeops/
+├── api/                # FastAPI app, routers, cookie session store, graph runtime
+├── services/           # UI-agnostic logic (Terraform-edit validation, conversation)
 ├── agents/             # requirement, architecture, iac, deployment, destroy agents
-├── core/               # secrets, llm client, gcp context, policy, prices
+├── core/               # llm client, gcp context, auth, policy, analytics, logging
 ├── cost/               # Infracost + Cloud Catalog cost adapters
 ├── graph/              # LangGraph orchestrator + router functions
 ├── models/             # Pydantic state + spec + result models
 ├── terraform/          # Jinja2 templates, runner subprocess, error parser
-├── tools/              # GCP compute + resource_manager API wrappers
-└── ui/                 # chat, setup, review, deployment, vm_inventory, theme
+└── tools/              # GCP compute + resource_manager API wrappers
 
-tests/                  # 370+ unit tests, optional live integration tests
-screenshots/            # README assets (LFS-tracked)
-app.py                  # Streamlit entry point
-Dockerfile              # HF Spaces image
+frontend/               # React 18 + TS + Tailwind + Framer Motion (Vite) SPA
+tests/                  # 400+ backend unit tests, optional live integration tests
+Dockerfile              # HF Spaces image (Node build → uvicorn runtime)
 ```
 
 ---
@@ -139,7 +145,7 @@ Dockerfile              # HF Spaces image
 VibeOps never bundles credentials. Each visitor pastes:
 
 1. **An OpenAI API key** — used only for the requirement-gathering chat and a single HCL-fragment LLM call. No tools, no agents-as-a-service.
-2. **A GCP service-account JSON** — needs `compute.admin` (to provision VMs) and `resourcemanager.projects.get` (to list projects). Credentials live in `st.session_state` server-side and are also cached locally at `~/.vibeops/credentials.json` for convenience.
+2. **A GCP service-account JSON** — needs `compute.admin` (to provision VMs) and `resourcemanager.projects.get` (to list projects). Credentials live only in an in-memory per-session store server-side (keyed by an httpOnly cookie) and are never written to disk.
 
 Both can be cleared from any screen via **⚙ Settings → Reconfigure**.
 

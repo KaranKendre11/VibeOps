@@ -3,7 +3,12 @@ from __future__ import annotations
 from unittest.mock import patch
 
 from vibeops.agents.deployment import destroy_agent
-from vibeops.models.deployment import DeploymentOutcome, DeploymentPhase, DestroyResult, StateResource
+from vibeops.models.deployment import (
+    DeploymentOutcome,
+    DeploymentPhase,
+    DestroyResult,
+    StateResource,
+)
 from vibeops.models.state import GraphState
 
 

@@ -1,0 +1,227 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --bg: #000000;
+  --surface: #140610;
+  --surface-2: #26101c;
+  --fg: #ffffff;
+  --fg-muted: #c8cede;
+  --fg-dim: #868da3;
+  --line: rgba(255,190,214, 0.16);
+  --accent: #ff4d8d;
+  --nebula: #ff4d8d;
+  color-scheme: dark;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+  }
+
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+    overflow-x: hidden;
+  }
+
+  ::selection {
+    background: rgba(255,77,141, 0.3);
+    color: #ffffff;
+  }
+
+  /* Cyan-tinted scrollbars */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,77,141, 0.4) transparent;
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-thumb {
+    background: rgba(255,77,141, 0.28);
+    border-radius: 100px;
+    border: 2px solid transparent;
+    background-clip: content-box;
+  }
+  *::-webkit-scrollbar-thumb:hover {
+    background: rgba(255,77,141, 0.5);
+    background-clip: content-box;
+  }
+
+  input,
+  textarea,
+  select {
+    font-family: inherit;
+  }
+}
+
+@layer components {
+  /* Faint grid backdrop used behind the landing hero. */
+  .bg-grid {
+    background-image:
+      linear-gradient(rgba(255,77,141, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,77,141, 0.06) 1px, transparent 1px);
+    background-size: 46px 46px;
+    -webkit-mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 100%);
+    mask-image: radial-gradient(ellipse 70% 60% at 50% 40%, #000 40%, transparent 100%);
+  }
+
+  /* ----- Liquid-glass surfaces -----
+     Frosted CHROME (header, cards, dialogs, pills, the trajectory rail). Luminance
+     comes from a masked gradient RIM (::before) — bright at the top+bottom edges,
+     invisible through the middle — over a whisper-faint fill and heavy blur, so the
+     cosmic field shows through. Dense/high-legibility content (code, logs, spec
+     rows) must use .surface-solid instead. */
+  .glass-1,
+  .glass-2,
+  .glass-3,
+  .liquid-glass,
+  .liquid-glass-strong {
+    position: relative;
+    isolation: isolate;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.012));
+    border: 1px solid rgba(255,190,214, 0.07);
+  }
+  /* The liquid rim: a gradient border painted only in a 1px content-box ring. */
+  .glass-1::before,
+  .glass-2::before,
+  .glass-3::before,
+  .liquid-glass::before,
+  .liquid-glass-strong::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      180deg,
+      rgba(255, 255, 255, 0.5) 0%,
+      rgba(255, 255, 255, 0.15) 22%,
+      rgba(255, 255, 255, 0) 42%,
+      rgba(255, 255, 255, 0) 58%,
+      rgba(255, 255, 255, 0.14) 78%,
+      rgba(255, 255, 255, 0.42) 100%
+    );
+    -webkit-mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    mask:
+      linear-gradient(#fff 0 0) content-box,
+      linear-gradient(#fff 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    pointer-events: none;
+  }
+  .glass-1 {
+    -webkit-backdrop-filter: blur(14px) saturate(130%);
+    backdrop-filter: blur(14px) saturate(130%);
+    box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  }
+  .glass-2 {
+    -webkit-backdrop-filter: blur(18px) saturate(135%);
+    backdrop-filter: blur(18px) saturate(135%);
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  }
+  .glass-3 {
+    -webkit-backdrop-filter: blur(22px) saturate(140%);
+    backdrop-filter: blur(22px) saturate(140%);
+    box-shadow:
+      0 30px 70px rgba(0, 0, 0, 0.62),
+      inset 0 1px 0 rgba(255, 255, 255, 0.07),
+      inset 0 0 60px rgba(255,77,141, 0.04);
+  }
+  /* Light, pill-scale glass for nav chips, tags, the trajectory rail. */
+  .liquid-glass {
+    background: rgba(255, 255, 255, 0.015);
+    -webkit-backdrop-filter: blur(6px) saturate(125%);
+    backdrop-filter: blur(6px) saturate(125%);
+    box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.1);
+  }
+  /* Heavy glass for the single primary CTA — deep blur lifts it off the field. */
+  .liquid-glass-strong {
+    background: rgba(255, 255, 255, 0.02);
+    -webkit-backdrop-filter: blur(40px) saturate(140%);
+    backdrop-filter: blur(40px) saturate(140%);
+    box-shadow: 0 8px 26px rgba(0, 0, 0, 0.4), inset 0 1px 1px rgba(255, 255, 255, 0.16);
+  }
+
+  /* Cyan-tinted glass for the single accented surface (active/selected). */
+  .glass-cyan {
+    background:
+      linear-gradient(180deg, rgba(255,77,141, 0.1), rgba(255,77,141, 0.02));
+    border: 1px solid rgba(255,77,141, 0.32);
+    border-top-color: rgba(255,77,141, 0.5);
+    -webkit-backdrop-filter: blur(16px) saturate(140%);
+    backdrop-filter: blur(16px) saturate(140%);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.45), inset 0 0 24px rgba(255,77,141, 0.06);
+  }
+
+  /* Near-opaque neutral near-black for dense, must-stay-crisp content
+     (Terraform, logs, spec rows, inventory table). */
+  .surface-solid {
+    background: rgba(20,7,16,0.97);
+    border: 1px solid rgba(255,190,214, 0.1);
+    border-top-color: rgba(255,190,214, 0.16);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55);
+  }
+
+  /* Tracked-out uppercase micro-label for metadata (zone, cost, status). */
+  .text-meta {
+    font-family: 'JetBrains Mono', ui-monospace, monospace;
+    font-size: 10px;
+    line-height: 1.2;
+    text-transform: uppercase;
+    letter-spacing: 0.24em;
+    color: var(--fg-dim);
+  }
+
+  /* One restrained cyan "processing" shimmer for streaming/compute states.
+     Applied to chrome (status chips, thin bars) — never to code/log text. */
+  .shimmer-line {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255,77,141, 0.55) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    background-repeat: no-repeat;
+    animation: vo-shimmer 1.8s cubic-bezier(0.23, 1, 0.32, 1) infinite;
+  }
+}
+
+@keyframes vo-shimmer {
+  0% {
+    background-position: 150% 0;
+  }
+  100% {
+    background-position: -150% 0;
+  }
+}
+
+/* Respect reduced-motion: neutralize CSS keyframe animations. Framer Motion is
+   separately gated via useReducedMotion(). */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+}

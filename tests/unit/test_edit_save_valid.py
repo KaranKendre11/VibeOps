@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from vibeops.models.iac import TerraformValidationResult
 from vibeops.models.state import FlowStage, GraphState
-from vibeops.ui.review import apply_user_edit
+from vibeops.services.review import apply_user_edit
 
 _VALID_HCL = """\
 resource "google_compute_instance" "gpu_vm" {
@@ -40,10 +40,10 @@ class TestEditSaveValid:
         edited = _VALID_HCL.replace("test", "edited-vm")
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=MagicMock(ok=True, violations=[]),
         ):
             new_state, err = apply_user_edit(state, "main.tf", edited)
@@ -56,10 +56,10 @@ class TestEditSaveValid:
         edited = _VALID_HCL.replace("test", "another-vm")
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=MagicMock(ok=True, violations=[]),
         ):
             new_state, err = apply_user_edit(state, "main.tf", edited)
@@ -73,10 +73,10 @@ class TestEditSaveValid:
         edited = _VALID_HCL.replace("test", "yet-another")
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=MagicMock(ok=True, violations=[]),
         ):
             new_state, _ = apply_user_edit(state, "main.tf", edited)
@@ -89,10 +89,10 @@ class TestEditSaveValid:
         edited = _VALID_HCL.replace("test", "disk-test-vm")
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.ui.review.check_resource_allowlist",
+            "vibeops.services.review.check_resource_allowlist",
             return_value=MagicMock(ok=True, violations=[]),
         ):
             apply_user_edit(state, "main.tf", edited)

@@ -249,7 +249,14 @@ def list_running_instances(ctx: GcpContext) -> InstancesResult:
                 )
         # Sort: running first, then by creation time descending
         priority = {"RUNNING": 0, "PROVISIONING": 1, "STAGING": 2, "STOPPING": 3, "REPAIRING": 4}
-        instances.sort(key=lambda i: (priority.get(i.status, 99), -1 * len(i.creation_timestamp), i.creation_timestamp), reverse=False)
+        instances.sort(
+            key=lambda i: (
+                priority.get(i.status, 99),
+                -1 * len(i.creation_timestamp),
+                i.creation_timestamp,
+            ),
+            reverse=False,
+        )
         return InstancesResult(instances=instances)
     except gcp_exceptions.GoogleAPICallError as exc:
         raise GCPToolError(f"list_running_instances failed: {exc}") from exc
@@ -260,7 +267,7 @@ def delete_instance(ctx: GcpContext, zone: str, name: str) -> None:
     try:
         client = compute_v1.InstancesClient(credentials=ctx.credentials)
         op = client.delete(project=ctx.project_id, zone=zone, instance=name)
-        op.result(timeout=300)
+        op.result(timeout=300)  # type: ignore[no-untyped-call]
     except gcp_exceptions.GoogleAPICallError as exc:
         raise GCPToolError(f"delete_instance failed for {name} in {zone}: {exc}") from exc
 

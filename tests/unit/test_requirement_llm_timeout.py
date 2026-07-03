@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from unittest.mock import MagicMock
 
 import openai
@@ -8,7 +7,6 @@ import openai
 from vibeops.agents.requirement import requirement_agent
 from vibeops.core.llm import LLMClient
 from vibeops.models.conversation import ConversationTurn, RequirementPhase, TurnRole
-from vibeops.models.results import ChatResult
 from vibeops.models.state import FlowStage, GraphState
 
 

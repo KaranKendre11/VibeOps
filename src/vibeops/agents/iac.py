@@ -13,7 +13,16 @@ from langchain_core.runnables import RunnableConfig
 from vibeops.agents.iac_prompts import FRAGMENT_RETRY_PROMPT, FRAGMENT_SYSTEM_PROMPT
 from vibeops.core.llm import LLMClient
 from vibeops.core.policy import check_resource_allowlist
-from vibeops.models.iac import CostEstimate
+from vibeops.cost.pricing_constants import (
+    GPU_HOURLY_USD,
+    HOURS_PER_MONTH,
+    N1_CPU_HOURLY_USD,
+    N1_RAM_GB_HOURLY_USD,
+    PD_SSD_GB_MONTHLY_USD,
+    PREEMPTIBLE_DISCOUNT,
+)
+from vibeops.models.iac import CostEstimate, CostLineItem
+from vibeops.models.spec import DeploymentSpec
 from vibeops.models.state import FlowStage, GraphState
 from vibeops.terraform.render import render_templates
 from vibeops.terraform.runner import TerraformInitError, TerraformValidateError, init, validate
@@ -95,13 +104,22 @@ def iac_agent(state: GraphState, config: Optional[RunnableConfig] = None) -> Gra
     """Orchestrate render → validate → estimate → present.
 
     Falls back to a static stub when no LLMClient is in config (M1/M2 test compat).
+    In demo mode (no credentials) it renders real Terraform from the spec and attaches a
+    representative offline cost, but never runs terraform.
     """
     llm: LLMClient | None = None
     gcp_ctx: Any | None = None
+    demo_mode = False
     if config:
         configurable: dict[str, Any] = config.get("configurable") or {}
         llm = configurable.get("llm_client")
         gcp_ctx = configurable.get("gcp_context")
+        demo_mode = bool(configurable.get("demo_mode"))
+
+    # Demo mode ALWAYS uses the offline demo pipeline — never a real LLM/GCP call, even if a
+    # client leaked into the session from a prior authenticated flow (Reconfigure -> demo).
+    if demo_mode and state.deployment_spec is not None:
+        return _demo_pipeline(state)
 
     if llm is None or state.deployment_spec is None:
         return _stub_fallback(state)
@@ -140,6 +158,93 @@ def _stub_fallback(state: GraphState) -> GraphState:
                 }
             ],
         }
+    )
+
+
+# ---------------------------------------------------------------------------
+# Demo path (no credentials): real Terraform, representative cost, never applies
+# ---------------------------------------------------------------------------
+
+
+def _demo_pipeline(state: GraphState) -> GraphState:
+    """Render real Terraform from the spec + attach a representative offline cost.
+
+    Used only in demo mode. No terraform init/validate/apply and no GCP calls.
+    """
+    spec = state.deployment_spec
+    assert spec is not None  # guarded by caller
+
+    tmp_dir = Path(tempfile.mkdtemp(prefix="vibeops_demo_"))
+    try:
+        rendered = render_templates(spec, tmp_dir)
+    except Exception as exc:  # pragma: no cover - defensive
+        logger.warning("Demo render failed (%s); using static stub.", exc)
+        return _stub_fallback(state)
+
+    cost = _demo_cost_estimate(spec)
+    msg = (
+        f"Generated Terraform for {spec.compute.machine_type} + "
+        f"{spec.compute.gpu_count}× {spec.compute.gpu_type.value}. "
+        f"Representative cost: ${cost.monthly_usd:.2f}/mo (demo — deploy disabled)."
+    )
+    return state.model_copy(
+        update={
+            "terraform_files": rendered,
+            "terraform_files_original": dict(rendered),
+            "terraform_dir": str(tmp_dir),
+            "cost_estimate": cost,
+            "cost_estimate_usd": cost.monthly_usd,
+            "cost_estimate_stale": False,
+            "stage": FlowStage.AWAITING_APPROVAL,
+            "chat_history": state.chat_history
+            + [{"role": "agent", "agent": "iac", "content": msg}],
+        }
+    )
+
+
+def _demo_cost_estimate(spec: DeploymentSpec) -> CostEstimate:
+    """Fully-offline representative cost from pricing constants (no infracost/GCP)."""
+    gpu_hourly = GPU_HOURLY_USD.get(spec.compute.gpu_type.value, 0.35) * spec.compute.gpu_count
+
+    # Best-effort vCPU count from the machine-type suffix (e.g. n1-standard-4 -> 4).
+    vcpus = 4
+    suffix = spec.compute.machine_type.rsplit("-", 1)
+    if len(suffix) == 2 and suffix[1].isdigit():
+        vcpus = int(suffix[1])
+    ram_gb = vcpus * 3.75  # n1-standard vCPU:RAM ratio
+    machine_hourly = vcpus * N1_CPU_HOURLY_USD + ram_gb * N1_RAM_GB_HOURLY_USD
+
+    disk_monthly = spec.storage.disk_size_gb * PD_SSD_GB_MONTHLY_USD
+    disk_hourly = disk_monthly / HOURS_PER_MONTH
+
+    if spec.compute.preemptible:
+        gpu_hourly *= PREEMPTIBLE_DISCOUNT
+        machine_hourly *= PREEMPTIBLE_DISCOUNT
+
+    hourly = gpu_hourly + machine_hourly + disk_hourly
+    return CostEstimate(
+        hourly_usd=round(hourly, 4),
+        monthly_usd=round(hourly * HOURS_PER_MONTH, 2),
+        source="cloud_catalog",
+        confidence="low",
+        breakdown=[
+            CostLineItem(
+                description=f"{spec.compute.gpu_count}× {spec.compute.gpu_type.value}",
+                hourly_usd=round(gpu_hourly, 4),
+                monthly_usd=round(gpu_hourly * HOURS_PER_MONTH, 2),
+            ),
+            CostLineItem(
+                description=f"{spec.compute.machine_type} (~{vcpus} vCPU)",
+                hourly_usd=round(machine_hourly, 4),
+                monthly_usd=round(machine_hourly * HOURS_PER_MONTH, 2),
+            ),
+            CostLineItem(
+                description=f"{spec.storage.disk_size_gb} GB SSD disk",
+                hourly_usd=round(disk_hourly, 4),
+                monthly_usd=round(disk_monthly, 2),
+            ),
+        ],
+        notes=["Representative estimate — demo mode (no live GCP pricing)."],
     )
 
 

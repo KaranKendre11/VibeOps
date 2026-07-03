@@ -7,9 +7,9 @@ _MODULES = [
     "vibeops.config",
     "vibeops.core.errors",
     "vibeops.core.logging",
-    "vibeops.core.secrets",
     "vibeops.core.auth",
     "vibeops.core.llm",
+    "vibeops.core.analytics",
     "vibeops.models.state",
     "vibeops.models.requirement",
     "vibeops.models.spec",
@@ -20,6 +20,10 @@ _MODULES = [
     "vibeops.agents.architecture",
     "vibeops.agents.iac",
     "vibeops.agents.deployment",
+    "vibeops.api.main",
+    "vibeops.api.session",
+    "vibeops.services.review",
+    "vibeops.services.conversation",
 ]
 
 

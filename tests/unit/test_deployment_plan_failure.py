@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from unittest.mock import patch
 
-import pytest
-
 from vibeops.agents.deployment import deployment_agent
 from vibeops.models.deployment import DeploymentOutcome, DeploymentPhase
 from vibeops.models.state import FlowStage, GraphState

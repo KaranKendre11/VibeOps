@@ -40,7 +40,7 @@ def test_output_files_written_to_disk(tmp_path: Path) -> None:
 
 
 def test_main_tf_is_valid_hcl(tmp_path: Path) -> None:
-    result = render_templates(_spec(), tmp_path)
+    render_templates(_spec(), tmp_path)
     with (tmp_path / "main.tf").open() as fh:
         parsed = hcl2.load(fh)
     assert "resource" in parsed or "terraform" in parsed

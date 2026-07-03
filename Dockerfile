@@ -2,16 +2,26 @@
 # ---------------------------------------------------------------------------
 # VibeOps — Hugging Face Spaces (Docker SDK) image
 #
-# Why Docker SDK?  We need the Terraform CLI on the container, which Streamlit
-# Community Cloud cannot install.  HF Spaces Docker SDK gives us full control.
+# Multi-stage: stage 1 builds the React SPA; stage 2 is the Python runtime that
+# serves the built bundle + the FastAPI API on a single port ($PORT, 7860) via
+# uvicorn. Terraform CLI is installed for real deploys.
 #
 # HF Spaces rules we follow:
-#   * App must listen on $PORT (HF sets it; default 7860 — see app_port in README)
-#   * Container must run as a non-root user with UID 1000
-#   * $HOME must be writable (Streamlit caches go there)
+#   * App listens on $PORT (default 7860 — see app_port in README)
+#   * Container runs as a non-root user with UID 1000
+#   * $HOME is writable
 # ---------------------------------------------------------------------------
 
-FROM python:3.12-slim AS base
+# ---- Stage 1: build the React frontend -----------------------------------
+FROM node:20-alpine AS frontend
+WORKDIR /build
+COPY frontend/package.json frontend/package-lock.json* ./
+RUN npm install
+COPY frontend/ ./
+RUN npm run build            # emits /build/dist
+
+# ---- Stage 2: Python runtime ---------------------------------------------
+FROM python:3.12-slim AS runtime
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -19,7 +29,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1 \
     TERRAFORM_VERSION=1.9.5
 
-# Terraform CLI + minimal build deps
+# Terraform CLI + minimal deps
 RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         unzip \
@@ -34,20 +44,16 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Non-root user (HF Spaces requirement: UID 1000)
 RUN useradd -m -u 1000 -s /bin/bash user
-
 USER user
 ENV HOME=/home/user \
     PATH="/home/user/.local/bin:${PATH}"
-
 WORKDIR $HOME/app
 
-# Dependency layer — copy only what's needed for `pip install`
+# Dependency layer (kept explicit + pip-based for the HF Spaces sandbox)
 COPY --chown=user:user pyproject.toml ./
-
-# Install Python deps. We don't use uv.lock here because pip is the safest
-# install path inside the HF Spaces sandbox.
 RUN pip install --user --no-cache-dir \
-        "streamlit>=1.40" \
+        "fastapi>=0.139" \
+        "uvicorn[standard]>=0.30" \
         "langgraph>=0.2" \
         "langchain-core>=0.3" \
         "openai>=1.50" \
@@ -62,21 +68,15 @@ RUN pip install --user --no-cache-dir \
 
 # Application code
 COPY --chown=user:user src ./src
-COPY --chown=user:user app.py ./
-COPY --chown=user:user .streamlit ./.streamlit
+# Built SPA from stage 1 → frontend/dist (served by FastAPI StaticFiles; the path
+# matches api/main.py's `parents[3]/frontend/dist`).
+COPY --chown=user:user --from=frontend /build/dist ./frontend/dist
 
-# Make the source tree importable
 ENV PYTHONPATH="/home/user/app/src:${PYTHONPATH}"
-
-# HF Spaces default port; overridable via $PORT
 ENV PORT=7860
 EXPOSE 7860
 
-# Streamlit-on-HF tuning:
-#   --server.headless=true    — no browser launch attempt
-#   --server.enableCORS=false — HF proxies the app
-#   --server.enableXsrfProtection=false — same reason
 HEALTHCHECK --interval=30s --timeout=10s --start-period=20s --retries=3 \
-    CMD curl -fsS "http://localhost:${PORT}/_stcore/health" || exit 1
+    CMD curl -fsS "http://localhost:${PORT}/api/health" || exit 1
 
-CMD ["sh", "-c", "streamlit run app.py --server.port=${PORT} --server.address=0.0.0.0 --server.headless=true --server.enableCORS=false --server.enableXsrfProtection=false"]
+CMD ["sh", "-c", "uvicorn vibeops.api.main:app --host 0.0.0.0 --port ${PORT}"]

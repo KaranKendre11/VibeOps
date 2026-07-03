@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from vibeops.terraform.error_parser import parse_error
 
-
 _API_STDERR = """\
 Error: Error when reading or editing Instance: googleapi: Error 403: \
 API has not been used in project 123456789 before or it is disabled. \

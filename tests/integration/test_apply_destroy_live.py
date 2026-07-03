@@ -60,11 +60,11 @@ def test_apply_then_destroy_live(tmp_path: Path) -> None:
     if not project_id:
         pytest.skip("GCP_PROJECT_ID not set")
 
-    from vibeops.core.llm import LLMClient
-    from vibeops.agents.iac import _real_pipeline
     from vibeops.agents.deployment import deployment_agent, destroy_agent
-    from vibeops.models.state import GraphState, FlowStage
+    from vibeops.agents.iac import _real_pipeline
+    from vibeops.core.llm import LLMClient
     from vibeops.models.deployment import DeploymentOutcome, DeploymentPhase
+    from vibeops.models.state import FlowStage, GraphState
     from vibeops.terraform.runner import init
 
     llm = LLMClient(api_key=api_key)
@@ -82,7 +82,6 @@ def test_apply_then_destroy_live(tmp_path: Path) -> None:
 
     # Deployment: plan + apply (real GCP)
     deploy_state = iac_result.model_copy(update={"approved": True})
-    logs: list[str] = []
 
     deploy_result = deployment_agent(deploy_state)
     assert deploy_result.deployment_phase == DeploymentPhase.SUCCEEDED, (

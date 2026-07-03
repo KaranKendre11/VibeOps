@@ -5,7 +5,7 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 from vibeops.graph.orchestrator import build_graph
-from vibeops.models.deployment import ApplyResult, DeploymentPhase, PlanResult, StateResource
+from vibeops.models.deployment import ApplyResult, PlanResult, StateResource
 from vibeops.models.iac import TerraformValidationResult
 from vibeops.models.state import GraphState
 

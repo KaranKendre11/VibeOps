@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from vibeops.terraform.error_parser import parse_error
 
-
 _UNKNOWN_STDERR = """\
 Error: some totally unrecognised terraform error that doesn't match any pattern.
 Details: xyzzy blorp quux.

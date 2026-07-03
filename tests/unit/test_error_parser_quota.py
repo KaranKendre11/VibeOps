@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from vibeops.terraform.error_parser import parse_error
 
-
 _QUOTA_STDERR = """\
 Error: googleapi: Error 403: Quota 'NVIDIA_T4_GPUS' exceeded. Limit: 1.0 in region us-central1.
   on main.tf line 12, in resource "google_compute_instance" "main":

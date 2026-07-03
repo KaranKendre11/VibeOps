@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from vibeops.terraform.error_parser import parse_error
 
-
 _PERMISSION_STDERR = """\
 Error: Request had insufficient authentication scopes.
   Required 'compute.instances.create' permission for 'projects/my-project'.

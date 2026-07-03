@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 import json
-from unittest.mock import MagicMock, call, patch
-
-import pytest
+from unittest.mock import MagicMock, patch
 
 from vibeops.models.spec import ComputeSpec, DeploymentSpec, GpuType, NetworkSpec, StorageSpec
 from vibeops.models.state import FlowStage, GraphState

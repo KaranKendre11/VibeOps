@@ -5,7 +5,7 @@ from unittest.mock import patch
 
 from vibeops.models.iac import TerraformValidationResult
 from vibeops.models.state import FlowStage, GraphState
-from vibeops.ui.review import apply_user_edit
+from vibeops.services.review import apply_user_edit
 
 _ORIGINAL = 'resource "google_compute_instance" "gpu_vm" { name = "ok" }\n'
 _BROKEN = 'resource "google_compute_instance" "gpu_vm" { name = MISSING_QUOTE }\n'
@@ -27,7 +27,7 @@ class TestEditSaveInvalidHcl:
         state = _state(tmp_path)
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(
                 ok=False, errors=["Invalid expression: An argument definition must end with a newline."]
             ),
@@ -41,7 +41,7 @@ class TestEditSaveInvalidHcl:
         state = _state(tmp_path)
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=False, errors=["syntax error"]),
         ):
             new_state, _ = apply_user_edit(state, "main.tf", _BROKEN)
@@ -52,7 +52,7 @@ class TestEditSaveInvalidHcl:
         state = _state(tmp_path)
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=False, errors=["bad syntax"]),
         ):
             apply_user_edit(state, "main.tf", _BROKEN)
@@ -63,7 +63,7 @@ class TestEditSaveInvalidHcl:
         state = _state(tmp_path)
 
         with patch(
-            "vibeops.ui.review.validate",
+            "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=False, errors=["err"]),
         ):
             new_state, _ = apply_user_edit(state, "main.tf", _BROKEN)
