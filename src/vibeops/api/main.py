@@ -5,9 +5,10 @@ retired Streamlit ``app.py`` as the app's single entry point.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -47,12 +48,35 @@ def config() -> dict[str, object]:
     }
 
 
+def _https_context(request: Request) -> bool:
+    """True when the app is served over HTTPS (e.g. on HF Spaces, behind a proxy).
+
+    HF Spaces terminate TLS at a proxy, so the app itself sees http; trust the
+    ``X-Forwarded-Proto`` header and the HF ``SPACE_ID`` env var as signals.
+    """
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme)
+    return proto == "https" or bool(os.getenv("SPACE_ID"))
+
+
 @app.post("/api/session")
-def create_session() -> JSONResponse:
-    """Start a session: allocate server-side state and set the httpOnly session cookie."""
+def create_session(request: Request) -> JSONResponse:
+    """Start a session: allocate server-side state and set the httpOnly session cookie.
+
+    On HTTPS (HF Spaces embeds the app in a cross-site iframe) the cookie must be
+    ``SameSite=None; Secure`` or the browser won't send it back on API calls made
+    from inside the iframe. Locally (http://localhost) we fall back to ``Lax`` since
+    ``Secure`` cookies are never stored over plain HTTP.
+    """
     session = get_store().create()
     resp = JSONResponse({"thread_id": session.thread_id})
-    resp.set_cookie(SESSION_COOKIE, session.id, httponly=True, samesite="lax")
+    secure = _https_context(request)
+    resp.set_cookie(
+        SESSION_COOKIE,
+        session.id,
+        httponly=True,
+        samesite="none" if secure else "lax",
+        secure=secure,
+    )
     return resp
 
 

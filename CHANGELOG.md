@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.1] - 2026-07-03
+
+### Fixed
+
+- **Session cookie now works inside the HuggingFace Spaces iframe.** The app is
+  embedded in a cross-site iframe on huggingface.co, where browsers refuse to send a
+  `SameSite=Lax` cookie — so every API call after `POST /api/session` arrived without
+  the session cookie and failed with "No active session; POST /api/session first."
+  The session cookie is now set `SameSite=None; Secure` when the app is served over
+  HTTPS (detected via the `X-Forwarded-Proto` header / the HF `SPACE_ID` env var), and
+  still falls back to `SameSite=Lax` for local HTTP dev (where `Secure` cookies aren't
+  stored). (`src/vibeops/api/main.py`)
+
 ## [2.0.0] - 2026-07-03
 
 ### Added
