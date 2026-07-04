@@ -41,6 +41,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   is logged that state is ephemeral. (`src/vibeops/terraform/backend.py`,
   `src/vibeops/config.py`, `src/vibeops/terraform/runner.py`,
   `src/vibeops/agents/iac.py`, `src/vibeops/models/state.py`)
+- **Deploy an over-cap plan from the UI via an explicit confirm-and-deploy dialog
+  (issue #11, 2026-07-03).** The monthly cost cap is enforced at the deploy gate,
+  but an over-budget plan was a dead end on the review screen — the UI gave no way
+  to opt in. Approve & Deploy now opens a confirmation dialog for over-cap plans
+  that shows the estimated monthly cost against your cap and offers "Deploy anyway"
+  (which sends `override_cost_cap: true` to `POST /api/deploy/start`) or "Go back &
+  reduce"; under-cap deploys proceed immediately as before.
+  (`frontend/src/screens/ReviewScreen.tsx`, `frontend/src/api/client.ts`,
+  `frontend/src/api/types.ts`)
+- **Machine-type/zone availability and GPU quota re-checked just before apply
+  (issue #15, 2026-07-03).** Capacity and quota can drift between picking an
+  architecture and approving a deploy, so a once-valid plan could fail with a raw
+  `terraform apply` error. A new `check_machine_availability` probe re-verifies —
+  bypassing the session cache for a fresh view — that the chosen machine type and
+  GPU are still offered in the zone and that the region quota covers the requested
+  GPU count, immediately before apply. A definitive "unavailable" verdict fails
+  fast with an actionable message and records the zone in `excluded_zones` so
+  re-discovery skips it; an inconclusive probe (e.g. the availability API is
+  unreachable) fails open and leaves Terraform as the backstop. A zone-level
+  `terraform apply` capacity failure now also adds that zone to `excluded_zones`.
+  (`src/vibeops/tools/compute.py`, `src/vibeops/agents/deployment.py`)
 
 ### Changed
 
@@ -49,6 +70,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   cost estimates, Firewall/startup & containers, and Inventory & recovery — with
   the hero subhead copy tightened alongside.
   (`frontend/src/landing/LandingScreen.tsx`)
+- **Landing page repositioned from a single GPU VM to all of GCP (issues #12,
+  #17-#21, 2026-07-03).** The marketing landing page was overhauled to tell the
+  whole-infrastructure story. The hero and cinematic passage now describe an agent
+  for your entire GCP footprint (GPU VMs, Cloud SQL, storage, networking); the
+  "Problem" section's manual steps were generalized beyond GPUs (VPC and subnets,
+  firewall rules, IAM roles, pricing) and its heading became "Nine steps to stand
+  up infrastructure"; the two tautological metrics ("100% applies you review",
+  "$0 idle spend") were replaced with concrete ones ("0 credentials or state we
+  store", "1-click teardown"); the capabilities grid was rewritten toward trust
+  and safety (keys never stored, deploy-time allowlist, budget cap, editable
+  Terraform, whole-stack beyond GPUs, inventory/teardown) and de-duplicated from
+  the "How it works" stage copy; the single static example prompt became a
+  stacked, auto-cycling "PromptDeck" of four examples (GPU compute, database,
+  storage+CDN, firewall) that pauses on hover/focus and respects reduced motion;
+  and the app's Plexus/nebula animated background now renders behind the landing
+  so non-video sections match the in-app screens.
+  (`frontend/src/landing/LandingScreen.tsx`)
+- **"Start over" now resets in-app instead of reloading, plus a new "Clear
+  credentials" control (issue #14, 2026-07-03).** The "Start over" / "Start
+  something new" buttons (on the cancelled/complete and post-teardown screens) used
+  to hard-reload the page, dropping you back at the marketing landing gate and
+  forcing setup again. They now call a client-side `resetPlan()` that clears only
+  the run/graph state and returns to the Describe step, keeping your credentials
+  and setup. A distinct "Clear credentials" control was added to the app chrome for
+  an explicit server-side sign-out: it calls a new `POST /api/session/reset`
+  endpoint that wipes all credential-derived state (OpenAI key, GCP service-account
+  JSON, project, clients, setup flags) from the in-memory session while leaving the
+  session cookie intact, then returns to the landing page. The soft "×" (return to
+  home) now explicitly keeps the session, with a clarified tooltip.
+  (`frontend/src/components/Chrome.tsx`, `frontend/src/store/useStore.ts`,
+  `frontend/src/screens/TerminalScreen.tsx`,
+  `frontend/src/screens/DeploymentScreen.tsx`,
+  `src/vibeops/api/routes_session.py`, `src/vibeops/api/main.py`)
 
 ### Fixed
 
@@ -87,6 +141,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `src/vibeops/cost/pricing_constants.py`, `src/vibeops/cost/infracost.py`,
   `src/vibeops/models/iac.py`, `src/vibeops/agents/iac.py`, `README.md`,
   `frontend/src/landing/LandingScreen.tsx`)
+- **The `[[PROCEED]]` control sentinel no longer flashes in the chat while
+  streaming (issue #13, 2026-07-03).** On its confirmation turn the model emits a
+  `[[PROCEED]]` sentinel that the backend strips from the stored conversation but
+  not from the live token stream, so it briefly flickered in the chat bubble as
+  tokens streamed in. The chat screen now removes the sentinel from the streamed
+  text before display, including when it is split across SSE chunks (a dangling
+  partial like `[[PRO` is withheld until the following tokens arrive).
+  (`frontend/src/screens/ChatScreen.tsx`)
 
 ### Removed
 
