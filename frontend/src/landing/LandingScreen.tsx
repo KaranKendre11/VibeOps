@@ -208,16 +208,43 @@ function SquashHamburger({ open }: { open: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
-// Section 1 — Hero (mouse-scrubbed video)
+// Section 1 — Hero (cursor-scrubbed video on desktop; autoplays on touch)
 // ---------------------------------------------------------------------------
 
 function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnter: () => void }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const reduce = useReducedMotion();
 
+  // Touch / coarse-pointer devices have no cursor to scrub the hero clip with,
+  // so cursor-scrubbing would leave them staring at a black first frame. Detect
+  // them and let the video play on its own instead (see the video props below).
+  const [coarse, setCoarse] = useState(
+    () =>
+      typeof window !== 'undefined' &&
+      window.matchMedia('(hover: none), (pointer: coarse)').matches,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia('(hover: none), (pointer: coarse)');
+    const onChange = () => setCoarse(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Touch → autoplay the clip; reduced motion always wins and keeps it a still
+  // frame; only desktop (fine pointer, motion allowed) scrubs on mousemove.
+  const autoplay = coarse && !reduce;
+
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
+
+    // Touch / coarse-pointer: no cursor to scrub with, so just play it. (The
+    // autoPlay/loop props cover the initial mount; this also handles a runtime
+    // switch, e.g. a pointer being connected or disconnected.)
+    if (autoplay) {
+      void video.play().catch(() => {});
+      return;
+    }
 
     let duration = 0;
     let target = 0;
@@ -262,7 +289,7 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
       video.removeEventListener('seeked', onSeeked);
       window.removeEventListener('mousemove', onMove);
     };
-  }, [reduce]);
+  }, [reduce, autoplay]);
 
   return (
     <section className="relative flex h-screen min-h-[100dvh] flex-col overflow-hidden px-4 pb-8 pt-20 sm:px-6 sm:pb-12 sm:pt-24 md:px-8">
@@ -273,6 +300,8 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
         src={VIDEOS.hero}
         muted
         playsInline
+        autoPlay={autoplay}
+        loop={autoplay}
         preload="auto"
         className="absolute inset-0 h-full w-full object-cover"
       />
