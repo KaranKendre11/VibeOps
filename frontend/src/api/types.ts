@@ -33,6 +33,12 @@ export interface ValidateResult {
   fingerprint?: string | null;
 }
 
+// Body for POST /api/deploy/start. `override_cost_cap` lets an over-cap plan deploy
+// anyway (the backend returns 409 otherwise); omitted/false preserves the gated default.
+export interface DeployStartRequest {
+  override_cost_cap: boolean;
+}
+
 export type TurnRole = 'user' | 'agent' | string;
 
 export interface ConversationTurn {
