@@ -73,6 +73,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   appeared to come and go as the window aspect ratio changed). `html`/`#root` are
   now painted with the app background, and the scrollbar track/corner are
   transparent. (`frontend/src/styles/globals.css`)
+- **Cost estimates no longer overstate how they're priced (2026-07-03).** The cost
+  layer advertised prices "from GCP's Cloud Catalog," but it never called the GCP
+  Cloud Billing Catalog API — the fallback estimate multiplies a hand-maintained
+  rate table by a Compute API machine-shape lookup. The fallback estimate's
+  `source` is now reported as `price_table` (was the misleading `cloud_catalog`),
+  the adapter module was renamed `cost/cloud_catalog.py` → `cost/price_table.py`
+  (`estimate_from_price_table`), and the README pipeline/feature copy plus the
+  landing page's "Price" stage and cost capability card now say cost is estimated
+  from a maintained GCP price table (Infracost when configured). Infracost is still
+  the first-choice source when its binary is available.
+  (`src/vibeops/cost/price_table.py`, `src/vibeops/cost/__init__.py`,
+  `src/vibeops/cost/pricing_constants.py`, `src/vibeops/cost/infracost.py`,
+  `src/vibeops/models/iac.py`, `src/vibeops/agents/iac.py`, `README.md`,
+  `frontend/src/landing/LandingScreen.tsx`)
+
+### Removed
+
+- **Dead duplicate price tables and the unused billing tool (2026-07-03).** Deleted
+  `src/vibeops/tools/billing.py` (the `estimate_price` agent tool) and its
+  `PriceEstimate` model, along with the stale VM/GPU hourly rate table in
+  `src/vibeops/core/prices.py` — all duplicates of the maintained table in
+  `cost/pricing_constants.py` that were reachable only from a test-only tool
+  registry, never the live cost pipeline. `core/prices.py` now holds only the
+  OpenAI token-pricing constants the LLM client uses.
+  (`src/vibeops/tools/billing.py`, `src/vibeops/tools/__init__.py`,
+  `src/vibeops/core/prices.py`, `src/vibeops/models/results.py`,
+  `tests/unit/test_tools_billing.py`, `tests/unit/test_tool_registration.py`)
 
 ### Security
 

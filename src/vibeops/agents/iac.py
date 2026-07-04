@@ -237,7 +237,7 @@ def _demo_cost_estimate(spec: DeploymentSpec) -> CostEstimate:
     return CostEstimate(
         hourly_usd=round(hourly, 4),
         monthly_usd=round(hourly * HOURS_PER_MONTH, 2),
-        source="cloud_catalog",
+        source="price_table",
         confidence="low",
         breakdown=[
             CostLineItem(

@@ -3,7 +3,6 @@ from __future__ import annotations
 from langchain_core.tools import StructuredTool
 
 from vibeops.core.gcp_context import GcpContext
-from vibeops.tools.billing import estimate_price
 from vibeops.tools.compute import (
     get_accelerator_quota,
     list_machine_types,
@@ -36,21 +35,10 @@ def build_tools(ctx: GcpContext) -> list[StructuredTool]:
         """List VPC networks in the GCP project."""
         return list_existing_networks(ctx)
 
-    def _price(
-        machine_type: str,
-        zone: str,
-        gpu_type: str,
-        gpu_count: int,
-        preemptible: bool,
-    ) -> object:
-        """Estimate hourly and monthly cost for a VM configuration."""
-        return estimate_price(ctx, machine_type, zone, gpu_type, gpu_count, preemptible)
-
     return [
         StructuredTool.from_function(_zones, name="list_zones_with_accelerator"),
         StructuredTool.from_function(_machine_types, name="list_machine_types"),
         StructuredTool.from_function(_os_images, name="list_os_images"),
         StructuredTool.from_function(_quota, name="get_accelerator_quota"),
         StructuredTool.from_function(_networks, name="list_existing_networks"),
-        StructuredTool.from_function(_price, name="estimate_price"),
     ]

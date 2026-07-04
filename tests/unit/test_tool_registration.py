@@ -6,10 +6,10 @@ from vibeops.core.gcp_context import GcpContext
 from vibeops.tools import build_tools
 
 
-def test_build_tools_returns_six_tools() -> None:
+def test_build_tools_returns_five_tools() -> None:
     ctx = MagicMock(spec=GcpContext)
     tools = build_tools(ctx)
-    assert len(tools) == 6
+    assert len(tools) == 5
 
 
 def test_all_tools_have_names() -> None:
@@ -22,7 +22,6 @@ def test_all_tools_have_names() -> None:
         "list_os_images",
         "get_accelerator_quota",
         "list_existing_networks",
-        "estimate_price",
     }
     assert names == expected
 

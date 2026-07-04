@@ -584,7 +584,7 @@ const CAPABILITIES = [
   },
   {
     title: 'Real cost estimates',
-    desc: 'Priced from GCP’s Cloud Catalog and capped at your monthly budget, with override.',
+    desc: 'Estimated from a maintained GCP price table (Infracost when configured) and capped at your monthly budget, with override.',
   },
   {
     title: 'Firewall, startup & containers',
@@ -683,7 +683,7 @@ const STAGES = [
   },
   {
     name: 'Price',
-    desc: 'Estimates monthly cost from GCP’s Cloud Catalog and holds it against your cap. Over budget fails closed unless you override.',
+    desc: 'Estimates monthly cost from a maintained GCP price table (Infracost when configured) and holds it against your cap. Over budget fails closed unless you override.',
   },
   {
     name: 'Deploy',

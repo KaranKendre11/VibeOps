@@ -30,12 +30,12 @@ def _spec() -> DeploymentSpec:
     )
 
 
-def _catalog_result() -> CostEstimate:
+def _price_table_result() -> CostEstimate:
     from datetime import UTC, datetime
     return CostEstimate(
         hourly_usd=0.8,
         monthly_usd=584.0,
-        source="cloud_catalog",
+        source="price_table",
         confidence="medium",
         estimated_at=datetime.now(UTC),
     )
@@ -55,16 +55,16 @@ class TestFallbackOrchestration:
         assert result.source == "infracost"
         mock_ic.assert_called_once()
 
-    def test_infracost_none_falls_back_to_cloud_catalog(self, tmp_path: Path) -> None:
+    def test_infracost_none_falls_back_to_price_table(self, tmp_path: Path) -> None:
         ctx = MagicMock(spec=GcpContext)
-        cat_result = _catalog_result()
+        pt_result = _price_table_result()
         with (
             patch("vibeops.cost.run_infracost", return_value=None),
-            patch("vibeops.cost.cloud_catalog.estimate_from_catalog", return_value=cat_result) as mock_cat,
+            patch("vibeops.cost.price_table.estimate_from_price_table", return_value=pt_result) as mock_pt,
         ):
             result = estimate(tmp_path, _spec(), ctx)
-        assert result.source == "cloud_catalog"
-        mock_cat.assert_called_once()
+        assert result.source == "price_table"
+        mock_pt.assert_called_once()
 
     def test_infracost_none_no_ctx_returns_zero_estimate(self, tmp_path: Path) -> None:
         with patch("vibeops.cost.run_infracost", return_value=None):
@@ -72,11 +72,11 @@ class TestFallbackOrchestration:
         assert result.monthly_usd == pytest.approx(0.0)
         assert result.confidence == "low"
 
-    def test_catalog_exception_returns_zero_estimate(self, tmp_path: Path) -> None:
+    def test_price_table_exception_returns_zero_estimate(self, tmp_path: Path) -> None:
         ctx = MagicMock(spec=GcpContext)
         with (
             patch("vibeops.cost.run_infracost", return_value=None),
-            patch("vibeops.cost.cloud_catalog.estimate_from_catalog", side_effect=RuntimeError("API down")),
+            patch("vibeops.cost.price_table.estimate_from_price_table", side_effect=RuntimeError("boom")),
         ):
             result = estimate(tmp_path, _spec(), ctx)
         assert result.monthly_usd == pytest.approx(0.0)

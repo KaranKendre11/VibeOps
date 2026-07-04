@@ -63,7 +63,7 @@ against a resource allowlist before anything is applied.
 | **1 · Understand** | One LLM pass pulls every detail from your words — GPU, ports, OS, region — then asks plain-language follow-ups for anything still missing. It never re-asks what you already said. |
 | **2 · Locate** | Live GCP lookups for accelerator availability and your project quota, ranked by free capacity, so the box lands where there's actually room. |
 | **3 · Generate** | Renders valid, scoped Terraform — firewall rules, startup scripts, and container metadata included. Edit the HCL inline before anything runs. |
-| **4 · Price** | Estimates monthly cost from GCP's Cloud Catalog (or Infracost if present) and holds it against your cap. Over budget fails closed unless you override. |
+| **4 · Price** | Estimates monthly cost from a maintained GCP price table (or Infracost when configured) and holds it against your cap. Over budget fails closed unless you override. |
 | **5 · Deploy** | Checks the plan against a resource allowlist, then `terraform apply` — only after you approve. The live log streams as resources come up. |
 | **6 · Live** | Hands back a clickable URL the moment the box is up. One click tears everything down and stops the meter. |
 
@@ -118,7 +118,7 @@ tear down with confirmation.
 - 💬 **Plain-language conversation** — no GCP jargon. *"How much RAM do you need? 16 / 32 / 64 / 128 GB"* instead of *"What's your memory floor?"*
 - 🗺️ **GPU-aware zone discovery** — live queries to GCP for accelerator availability + your project quota, ranked by free capacity.
 - 📄 **Editable Terraform** — generated HCL is shown side-by-side with the spec. Edit it inline; it's re-validated before deploy.
-- 💸 **Real-time cost estimate** — pulled from GCP Cloud Catalog (or Infracost if available), with a hard cost cap you can override.
+- 💸 **Cost estimate** — from a maintained GCP price table (or Infracost when configured), with a hard cost cap you can override.
 - 🔥 **Firewall + startup script + container support** — say *"with port 443 open running nginx"* and you get a `google_compute_firewall`, COS metadata, and a clickable `https://<ip>` on the success screen.
 - 🛰️ **Live VM inventory** — see every VM in your project from any screen. Multi-select tear-down with confirmation.
 - 🔁 **Capacity-failure recovery** — if a zone has no quota at apply time, one click retries in a different zone.
@@ -207,7 +207,7 @@ src/vibeops/
 ├── services/           # UI-agnostic logic (Terraform-edit validation, conversation)
 ├── agents/             # requirement, architecture, iac, deployment, destroy agents
 ├── core/               # llm client, gcp context, auth, policy, analytics, logging
-├── cost/               # Infracost + Cloud Catalog cost adapters
+├── cost/               # Infracost + GCP price-table cost adapters
 ├── graph/              # LangGraph orchestrator + router functions
 ├── models/             # Pydantic state + spec + result models
 ├── terraform/          # Jinja2 templates, runner subprocess, error parser

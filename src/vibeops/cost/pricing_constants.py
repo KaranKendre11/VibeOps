@@ -1,4 +1,7 @@
-"""GCP pricing constants used when Cloud Catalog API has SKU gaps.
+"""Maintained GCP price table — a hand-verified snapshot of GCP's published prices.
+
+These constants are the fallback cost source when Infracost is not configured;
+nothing here queries the GCP Cloud Billing Catalog API at runtime.
 
 Prices last verified: 2026-05-11 against GCP pricing calculator
 (https://cloud.google.com/products/calculator).
