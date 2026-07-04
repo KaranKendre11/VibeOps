@@ -9,6 +9,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Cloud resources dashboard — see and tear down your deployed GCP resources
+  (issue #16, 2026-07-03).** The VM-only inventory became a "Cloud resources"
+  dashboard that lists four Compute Engine resource types — instances, persistent
+  disks, custom images, and VPC networks — in tabs, each with an estimated monthly
+  cost and a running total. Cost uses honest price-table estimates for instances
+  and disks and shows "—" for usage-/egress-based images and networks (never a
+  fabricated number). Every resource has a Delete action — a direct GCP delete,
+  outside Terraform state, as the dashboard notes; the whole-stack `terraform
+  destroy` is unchanged. `GET /api/inventory` now returns instances/disks/images/
+  networks, with typed deletes at `/api/inventory/{instance|disk|image|network}/…`.
+  Demo mode seeds a default network and a sample image, and a demo deploy adds a
+  costed VM + boot disk. GCS buckets are a planned follow-up (needs an added
+  dependency). (`frontend/src/components/InventoryDialog.tsx`,
+  `src/vibeops/tools/compute.py`, `src/vibeops/cost/price_table.py`,
+  `src/vibeops/api/routes_inventory.py`, `src/vibeops/models/results.py`)
+
 - **"The problem" section on the marketing landing page (2026-07-03).** A new
   section contrasts the nine-step manual grind of standing up a GPU VM (pick a
   machine type, hunt for a zone with GPU quota, hand-write the Terraform, open

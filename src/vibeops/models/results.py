@@ -89,7 +89,38 @@ class RunningInstance(BaseModel):
     creation_timestamp: str = ""
     labels: dict[str, str] = Field(default_factory=dict)
     gpu_summary: str = ""
+    # Estimated on-demand (or preemptible) monthly cost in USD; None when it can't be estimated.
+    monthly_cost_usd: float | None = None
 
 
 class InstancesResult(BaseModel):
     instances: list[RunningInstance] = Field(default_factory=list)
+
+
+class Disk(BaseModel):
+    name: str
+    zone: str
+    size_gb: int
+    type: str = ""  # short disk type, e.g. "pd-ssd", "pd-balanced", "pd-standard"
+    status: str = ""
+    users: list[str] = Field(default_factory=list)  # short names of attached instances
+    creation_timestamp: str = ""
+    monthly_cost_usd: float | None = None
+
+
+class DisksResult(BaseModel):
+    disks: list[Disk] = Field(default_factory=list)
+
+
+class CustomImage(BaseModel):
+    name: str
+    disk_size_gb: int
+    family: str = ""
+    status: str = ""
+    creation_timestamp: str = ""
+    # Images are billed on stored bytes; left None (usage-based, not a flat monthly rate).
+    monthly_cost_usd: float | None = None
+
+
+class CustomImagesResult(BaseModel):
+    images: list[CustomImage] = Field(default_factory=list)

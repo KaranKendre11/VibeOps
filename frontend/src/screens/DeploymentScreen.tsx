@@ -198,7 +198,7 @@ export function DeploymentScreen() {
               Tear down
             </Button>
             <Button variant="ghost" onClick={() => setInventoryOpen(true)}>
-              Open VM Inventory
+              Open resource dashboard
             </Button>
           </div>
         </ResultCard>

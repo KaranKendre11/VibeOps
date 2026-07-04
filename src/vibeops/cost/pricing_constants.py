@@ -33,8 +33,9 @@ G2_RAM_GB_HOURLY_USD: float = 0.005654
 # a2 machine family (A100 host): fixed per-accelerator pricing included in machine type.
 A2_CPU_HOURLY_USD: float = 0.031611  # fallback; a2 pricing is usually machine-type-level
 
-# Persistent disk: SSD (pd-ssd) USD per GB per month → convert to hourly
+# Persistent disk: USD per GB per month (on-demand, published GCP prices).
 PD_SSD_GB_MONTHLY_USD: float = 0.17
+PD_BALANCED_GB_MONTHLY_USD: float = 0.10
 PD_STANDARD_GB_MONTHLY_USD: float = 0.04
 
 HOURS_PER_MONTH: float = 730.0

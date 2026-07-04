@@ -5,7 +5,11 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from vibeops.core.gcp_context import GcpContext
-from vibeops.cost.price_table import estimate_from_price_table
+from vibeops.cost.price_table import (
+    estimate_disk_monthly_usd,
+    estimate_from_price_table,
+    estimate_instance_monthly_usd,
+)
 from vibeops.cost.pricing_constants import (
     GPU_HOURLY_USD,
     HOURS_PER_MONTH,
@@ -124,3 +128,66 @@ class TestEstimateFromPriceTable:
         with patch("vibeops.cost.price_table._parse_machine_resources", return_value=(8, 30.0)):
             result = estimate_from_price_table(_spec(), ctx)
         assert result.monthly_usd == pytest.approx(result.hourly_usd * HOURS_PER_MONTH, rel=0.01)
+
+
+class TestEstimateInstanceMonthlyUsd:
+    def test_cpu_only_is_positive(self) -> None:
+        ctx = _ctx()
+        with patch("vibeops.cost.price_table._parse_machine_resources", return_value=(4, 15.0)):
+            cost = estimate_instance_monthly_usd("n1-standard-4", "", 0, False, ctx)
+        assert cost is not None and cost > 0
+
+    def test_gpu_increases_cost(self) -> None:
+        ctx = _ctx()
+        with patch("vibeops.cost.price_table._parse_machine_resources", return_value=(4, 15.0)):
+            no_gpu = estimate_instance_monthly_usd("n1-standard-4", "", 0, False, ctx)
+            with_gpu = estimate_instance_monthly_usd(
+                "n1-standard-4", "nvidia-tesla-t4", 1, False, ctx
+            )
+        assert no_gpu is not None and with_gpu is not None
+        assert with_gpu > no_gpu
+        # The delta is the GPU's monthly rate.
+        assert with_gpu - no_gpu == pytest.approx(
+            GPU_HOURLY_USD["nvidia-tesla-t4"] * HOURS_PER_MONTH, rel=0.01
+        )
+
+    def test_preemptible_cheaper(self) -> None:
+        ctx = _ctx()
+        with patch("vibeops.cost.price_table._parse_machine_resources", return_value=(4, 15.0)):
+            on_demand = estimate_instance_monthly_usd(
+                "n1-standard-4", "nvidia-tesla-t4", 1, False, ctx
+            )
+            preempt = estimate_instance_monthly_usd(
+                "n1-standard-4", "nvidia-tesla-t4", 1, True, ctx
+            )
+        assert on_demand is not None and preempt is not None
+        assert preempt == pytest.approx(on_demand * PREEMPTIBLE_DISCOUNT, rel=0.01)
+
+    def test_empty_machine_type_returns_none(self) -> None:
+        assert estimate_instance_monthly_usd("", "", 0, False, _ctx()) is None
+
+    def test_returns_none_on_lookup_failure(self) -> None:
+        ctx = _ctx()
+        with patch(
+            "vibeops.cost.price_table._parse_machine_resources",
+            side_effect=RuntimeError("boom"),
+        ):
+            assert estimate_instance_monthly_usd("n1-standard-4", "", 0, False, ctx) is None
+
+
+class TestEstimateDiskMonthlyUsd:
+    def test_ssd_rate(self) -> None:
+        assert estimate_disk_monthly_usd(100, "pd-ssd") == pytest.approx(17.0)
+
+    def test_balanced_rate(self) -> None:
+        assert estimate_disk_monthly_usd(100, "pd-balanced") == pytest.approx(10.0)
+
+    def test_standard_rate(self) -> None:
+        assert estimate_disk_monthly_usd(100, "pd-standard") == pytest.approx(4.0)
+
+    def test_unknown_type_returns_none(self) -> None:
+        # Honest: no published rate for hyperdisk → "—" in the UI, not a guess.
+        assert estimate_disk_monthly_usd(100, "hyperdisk-extreme") is None
+
+    def test_zero_size_returns_none(self) -> None:
+        assert estimate_disk_monthly_usd(0, "pd-ssd") is None

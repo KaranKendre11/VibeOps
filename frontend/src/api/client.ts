@@ -90,10 +90,24 @@ export const api = {
   retryDeploy: () => post<{ status: string }>('/api/deploy/retry'),
   destroy: () => post<{ status: string }>('/api/deploy/destroy'),
 
-  // ---- inventory ----
+  // ---- inventory (cloud-resource dashboard) ----
   getInventory: () => request<InventoryResult>('/api/inventory'),
   deleteInstance: (zone: string, name: string) =>
-    request<{ ok: boolean }>(`/api/inventory/${encodeURIComponent(zone)}/${encodeURIComponent(name)}`, {
+    request<{ ok: boolean }>(
+      `/api/inventory/instance/${encodeURIComponent(zone)}/${encodeURIComponent(name)}`,
+      { method: 'DELETE' },
+    ),
+  deleteDisk: (zone: string, name: string) =>
+    request<{ ok: boolean }>(
+      `/api/inventory/disk/${encodeURIComponent(zone)}/${encodeURIComponent(name)}`,
+      { method: 'DELETE' },
+    ),
+  deleteImage: (name: string) =>
+    request<{ ok: boolean }>(`/api/inventory/image/${encodeURIComponent(name)}`, {
+      method: 'DELETE',
+    }),
+  deleteNetwork: (name: string) =>
+    request<{ ok: boolean }>(`/api/inventory/network/${encodeURIComponent(name)}`, {
       method: 'DELETE',
     }),
 };

@@ -158,11 +158,44 @@ export interface RunningInstance {
   creation_timestamp?: string;
   labels?: Record<string, string>;
   gpu_summary?: string;
+  /** Estimated monthly cost (USD); null when it can't be estimated → shown as "—". */
+  monthly_cost_usd?: number | null;
 }
 
+export interface Disk {
+  name: string;
+  zone: string;
+  size_gb: number;
+  type: string; // short disk type, e.g. "pd-ssd"
+  status?: string;
+  users?: string[]; // short names of attached instances
+  creation_timestamp?: string;
+  monthly_cost_usd?: number | null;
+}
+
+export interface CustomImage {
+  name: string;
+  disk_size_gb: number;
+  family?: string;
+  status?: string;
+  creation_timestamp?: string;
+  monthly_cost_usd?: number | null;
+}
+
+export interface Network {
+  name: string;
+  self_link?: string;
+  auto_create_subnetworks?: boolean;
+}
+
+// Cloud-resource dashboard payload (Compute Engine scope). `available`/`instances`
+// are kept for back-compat; the other groups are always present (possibly empty).
 export interface InventoryResult {
   available: boolean;
   instances: RunningInstance[];
+  disks: Disk[];
+  images: CustomImage[];
+  networks: Network[];
 }
 
 // SSE frame shapes
