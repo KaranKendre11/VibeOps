@@ -545,7 +545,7 @@ function Metrics() {
         >
           Operational Metrics
         </motion.p>
-        <div className="grid grid-cols-1 gap-16 md:grid-cols-3 md:gap-8">
+        <div className="grid grid-cols-1 items-start gap-16 md:grid-cols-3 md:gap-8">
           {METRICS.map((m, i) => (
             <motion.div
               key={m.label}
@@ -555,7 +555,7 @@ function Metrics() {
               viewport={{ once: true, amount: 0.3 }}
               transition={{ duration: 0.8, delay: i * 0.15 }}
             >
-              <div className="text-[clamp(48px,10vw,96px)] font-light leading-none tracking-[-0.04em] text-white">
+              <div className="whitespace-nowrap text-[clamp(48px,10vw,96px)] font-light leading-none tracking-[-0.04em] text-white">
                 {m.value}
               </div>
               <div className="mt-4 text-[13px] tracking-wide text-white/40 sm:text-[15px]">
