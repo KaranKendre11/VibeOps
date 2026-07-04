@@ -9,7 +9,9 @@ from vibeops.cost.pricing_constants import (
     HOURS_PER_MONTH,
     N1_CPU_HOURLY_USD,
     N1_RAM_GB_HOURLY_USD,
+    PD_BALANCED_GB_MONTHLY_USD,
     PD_SSD_GB_MONTHLY_USD,
+    PD_STANDARD_GB_MONTHLY_USD,
     PREEMPTIBLE_DISCOUNT,
     PRICES_AS_OF,
 )
@@ -51,6 +53,59 @@ def _parse_machine_resources(machine_type: str, ctx: GcpContext) -> tuple[int, f
         except ValueError:
             vcpus = 4
         return vcpus, vcpus * 3.75  # n1 standard ratio
+
+
+# Per-GB per-month rates for the persistent-disk types we have published prices for.
+# Types not listed (hyperdisk-*, pd-extreme, …) return None rather than a guess.
+_DISK_GB_MONTHLY_RATES: dict[str, float] = {
+    "pd-ssd": PD_SSD_GB_MONTHLY_USD,
+    "pd-balanced": PD_BALANCED_GB_MONTHLY_USD,
+    "pd-standard": PD_STANDARD_GB_MONTHLY_USD,
+}
+
+
+def estimate_instance_monthly_usd(
+    machine_type: str,
+    gpu_type: str,
+    gpu_count: int,
+    preemptible: bool,
+    ctx: GcpContext,
+) -> float | None:
+    """Estimate a single instance's monthly USD cost from the maintained price table.
+
+    Compute = vCPU·cpu_rate + RAM·ram_rate (family rates, falling back to n1) plus any
+    GPU via ``GPU_HOURLY_USD``, ×``HOURS_PER_MONTH``, ×the preemptible discount when set.
+    Uses the Compute ``MachineTypesClient`` only to resolve vCPU/RAM. Returns ``None`` on
+    any lookup failure so callers can render "—" rather than a fabricated number.
+    """
+    if not machine_type:
+        return None
+    try:
+        vcpus, mem_gb = _parse_machine_resources(machine_type, ctx)
+        family = _machine_family(machine_type)
+        cpu_rate = _MACHINE_FAMILY_CPU_RATES.get(family, N1_CPU_HOURLY_USD)
+        ram_rate = _MACHINE_FAMILY_RAM_RATES.get(family, N1_RAM_GB_HOURLY_USD)
+        compute_hourly = vcpus * cpu_rate + mem_gb * ram_rate
+        gpu_hourly = GPU_HOURLY_USD.get(gpu_type, 0.0) * max(gpu_count, 0) if gpu_type else 0.0
+        total_hourly = compute_hourly + gpu_hourly
+        if preemptible:
+            total_hourly *= PREEMPTIBLE_DISCOUNT
+        return round(total_hourly * HOURS_PER_MONTH, 2)
+    except Exception as exc:
+        logger.warning("Instance cost estimate failed for %s: %s", machine_type, exc)
+        return None
+
+
+def estimate_disk_monthly_usd(size_gb: int, disk_type: str) -> float | None:
+    """Estimate a persistent disk's monthly USD cost (size × published per-GB rate).
+
+    Returns ``None`` for disk types we don't have a published rate for (e.g. hyperdisk,
+    pd-extreme) rather than guessing — the UI shows "—" for those.
+    """
+    rate = _DISK_GB_MONTHLY_RATES.get(disk_type)
+    if rate is None or size_gb <= 0:
+        return None
+    return round(size_gb * rate, 2)
 
 
 def estimate_from_price_table(spec: DeploymentSpec, ctx: GcpContext) -> CostEstimate:

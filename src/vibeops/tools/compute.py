@@ -7,11 +7,18 @@ from google.cloud import compute_v1
 
 from vibeops.core.errors import GCPToolError
 from vibeops.core.gcp_context import GcpContext
+from vibeops.cost.price_table import estimate_disk_monthly_usd, estimate_instance_monthly_usd
 from vibeops.models.requirement import OsFamily
 from vibeops.models.results import (
+    CustomImage,
+    CustomImagesResult,
+    Disk,
+    DisksResult,
     InstancesResult,
     MachineType,
     MachineTypesResult,
+    Network,
+    NetworksResult,
     OsImage,
     OsImagesResult,
     QuotaResult,
@@ -219,6 +226,9 @@ def list_running_instances(ctx: GcpContext) -> InstancesResult:
         client = compute_v1.InstancesClient(credentials=ctx.credentials)
         pager = client.aggregated_list(project=ctx.project_id)
         instances: list[RunningInstance] = []
+        # Memoize cost per (machine_type, gpu_type, gpu_count, preemptible) so identical
+        # instances don't each trigger a machine-shape lookup within this single call.
+        cost_memo: dict[tuple[str, str, int, bool], float | None] = {}
         for zone_path, scoped in pager:
             if not zone_path.startswith("zones/"):
                 continue
@@ -235,11 +245,21 @@ def list_running_instances(ctx: GcpContext) -> InstancesResult:
                             external_ip = ac.nat_i_p
                             break
                 gpu_summary = ""
+                gpu_type_raw = ""
+                gpu_count = 0
                 for acc in getattr(item, "guest_accelerators", None) or []:
-                    gpu_name = (acc.accelerator_type or "").rsplit("/", 1)[-1]
-                    gpu_summary = f"{acc.accelerator_count}× {gpu_name}"
+                    gpu_type_raw = (acc.accelerator_type or "").rsplit("/", 1)[-1]
+                    gpu_count = int(acc.accelerator_count or 0)
+                    gpu_summary = f"{gpu_count}× {gpu_type_raw}"
                     break
+                scheduling = getattr(item, "scheduling", None)
+                preemptible = bool(getattr(scheduling, "preemptible", False))
                 labels = dict(item.labels) if item.labels else {}
+                cost_key = (machine_type_short, gpu_type_raw, gpu_count, preemptible)
+                if cost_key not in cost_memo:
+                    cost_memo[cost_key] = estimate_instance_monthly_usd(
+                        machine_type_short, gpu_type_raw, gpu_count, preemptible, ctx
+                    )
                 instances.append(
                     RunningInstance(
                         name=item.name or "",
@@ -251,6 +271,7 @@ def list_running_instances(ctx: GcpContext) -> InstancesResult:
                         creation_timestamp=item.creation_timestamp or "",
                         labels=labels,
                         gpu_summary=gpu_summary,
+                        monthly_cost_usd=cost_memo[cost_key],
                     )
                 )
         # Sort: running first, then by creation time descending
@@ -276,6 +297,109 @@ def delete_instance(ctx: GcpContext, zone: str, name: str) -> None:
         op.result(timeout=300)  # type: ignore[no-untyped-call]
     except gcp_exceptions.GoogleAPICallError as exc:
         raise GCPToolError(f"delete_instance failed for {name} in {zone}: {exc}") from exc
+
+
+def list_disks(ctx: GcpContext) -> DisksResult:
+    """List every persistent disk in the project across all zones (fresh; not cached)."""
+    try:
+        client = compute_v1.DisksClient(credentials=ctx.credentials)
+        pager = client.aggregated_list(project=ctx.project_id)
+        disks: list[Disk] = []
+        for zone_path, scoped in pager:
+            if not zone_path.startswith("zones/"):
+                continue
+            zone_name = zone_path.removeprefix("zones/")
+            for item in getattr(scoped, "disks", None) or []:
+                disk_type = (item.type_ or "").rsplit("/", 1)[-1]
+                users = [u.rsplit("/", 1)[-1] for u in (item.users or [])]
+                size_gb = int(item.size_gb or 0)
+                disks.append(
+                    Disk(
+                        name=item.name or "",
+                        zone=zone_name,
+                        size_gb=size_gb,
+                        type=disk_type,
+                        status=str(item.status or ""),
+                        users=users,
+                        creation_timestamp=item.creation_timestamp or "",
+                        monthly_cost_usd=estimate_disk_monthly_usd(size_gb, disk_type),
+                    )
+                )
+        return DisksResult(disks=disks)
+    except gcp_exceptions.GoogleAPICallError as exc:
+        raise GCPToolError(f"list_disks failed: {exc}") from exc
+
+
+def list_custom_images(ctx: GcpContext) -> CustomImagesResult:
+    """List the project's OWN custom images (not the public OS images). Fresh; not cached."""
+    try:
+        client = compute_v1.ImagesClient(credentials=ctx.credentials)
+        pager = client.list(project=ctx.project_id)
+        images: list[CustomImage] = [
+            CustomImage(
+                name=item.name or "",
+                disk_size_gb=int(item.disk_size_gb or 0),
+                family=item.family or "",
+                status=str(item.status or ""),
+                creation_timestamp=item.creation_timestamp or "",
+            )
+            for item in pager
+        ]
+        return CustomImagesResult(images=images)
+    except gcp_exceptions.GoogleAPICallError as exc:
+        raise GCPToolError(f"list_custom_images failed: {exc}") from exc
+
+
+def list_networks(ctx: GcpContext) -> NetworksResult:
+    """List every VPC network in the project (fresh; not cached).
+
+    A no-cache twin of ``resource_manager.list_existing_networks`` — the dashboard wants a
+    live view each time it opens, whereas the architecture agent caches its lookup.
+    """
+    try:
+        client = compute_v1.NetworksClient(credentials=ctx.credentials)
+        pager = client.list(project=ctx.project_id)
+        networks = [
+            Network(
+                name=item.name or "",
+                self_link=item.self_link or "",
+                auto_create_subnetworks=bool(item.auto_create_subnetworks),
+            )
+            for item in pager
+        ]
+        return NetworksResult(networks=networks)
+    except gcp_exceptions.GoogleAPICallError as exc:
+        raise GCPToolError(f"list_networks failed: {exc}") from exc
+
+
+def delete_disk(ctx: GcpContext, zone: str, name: str) -> None:
+    """Delete a single persistent disk. Blocks until the operation completes."""
+    try:
+        client = compute_v1.DisksClient(credentials=ctx.credentials)
+        op = client.delete(project=ctx.project_id, zone=zone, disk=name)
+        op.result(timeout=300)  # type: ignore[no-untyped-call]
+    except gcp_exceptions.GoogleAPICallError as exc:
+        raise GCPToolError(f"delete_disk failed for {name} in {zone}: {exc}") from exc
+
+
+def delete_image(ctx: GcpContext, name: str) -> None:
+    """Delete a single custom image (global resource). Blocks until the operation completes."""
+    try:
+        client = compute_v1.ImagesClient(credentials=ctx.credentials)
+        op = client.delete(project=ctx.project_id, image=name)
+        op.result(timeout=300)  # type: ignore[no-untyped-call]
+    except gcp_exceptions.GoogleAPICallError as exc:
+        raise GCPToolError(f"delete_image failed for {name}: {exc}") from exc
+
+
+def delete_network(ctx: GcpContext, name: str) -> None:
+    """Delete a single VPC network (global resource). Blocks until the operation completes."""
+    try:
+        client = compute_v1.NetworksClient(credentials=ctx.credentials)
+        op = client.delete(project=ctx.project_id, network=name)
+        op.result(timeout=300)  # type: ignore[no-untyped-call]
+    except gcp_exceptions.GoogleAPICallError as exc:
+        raise GCPToolError(f"delete_network failed for {name}: {exc}") from exc
 
 
 def get_accelerator_quota(

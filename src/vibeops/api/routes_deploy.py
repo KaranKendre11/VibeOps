@@ -20,8 +20,16 @@ from vibeops.api.deps import SessionDep
 from vibeops.api.graph_runtime import derive_stage, get_graph, thread_config
 from vibeops.api.session import Session
 from vibeops.core.analytics import track
+from vibeops.cost.price_table import estimate_disk_monthly_usd
+from vibeops.cost.pricing_constants import (
+    GPU_HOURLY_USD,
+    HOURS_PER_MONTH,
+    N1_CPU_HOURLY_USD,
+    N1_RAM_GB_HOURLY_USD,
+)
 from vibeops.models.deployment import DeploymentPhase
-from vibeops.models.results import RunningInstance
+from vibeops.models.results import Disk, RunningInstance
+from vibeops.models.spec import DeploymentSpec
 from vibeops.models.state import GraphState
 
 router = APIRouter(prefix="/api/deploy", tags=["deploy"])
@@ -50,8 +58,27 @@ def _launch(session: Session, updates: dict[str, Any]) -> None:
     threading.Thread(target=_run_deploy, args=(session, updates), daemon=True).start()
 
 
+def _demo_instance_monthly_usd(spec: DeploymentSpec | None) -> float:
+    """A simulated monthly estimate for the demo VM, derived from the price-table constants.
+
+    Demo mode has no GcpContext, so vCPU/RAM can't be looked up live — we approximate from
+    the machine-type suffix (n1 ratios). This number is explicitly a demo simulation.
+    """
+    machine_type = spec.compute.machine_type if spec else "n1-standard-4"
+    try:
+        vcpus = int(machine_type.rsplit("-", 1)[-1])
+    except ValueError:
+        vcpus = 4
+    mem_gb = vcpus * 3.75  # n1 standard ratio
+    compute_hourly = vcpus * N1_CPU_HOURLY_USD + mem_gb * N1_RAM_GB_HOURLY_USD
+    gpu_value = spec.compute.gpu_type.value if spec else "nvidia-tesla-t4"
+    gpu_count = spec.compute.gpu_count if spec else 1
+    gpu_hourly = GPU_HOURLY_USD.get(gpu_value, 0.0) * gpu_count
+    return round((compute_hourly + gpu_hourly) * HOURS_PER_MONTH, 2)
+
+
 def _record_demo_result(session: Session) -> None:
-    """Sync the session's simulated VM inventory after a demo apply/destroy."""
+    """Sync the session's simulated cloud-resource inventory after a demo apply/destroy."""
     try:
         values = get_graph(session).get_state(thread_config(session)).values
         state = GraphState.model_validate(values)
@@ -59,9 +86,11 @@ def _record_demo_result(session: Session) -> None:
         return
     if state.deployment_phase == DeploymentPhase.SUCCEEDED:
         spec = state.deployment_spec
+        zone = spec.compute.zone if spec else "us-central1-a"
+        disk_size = spec.storage.disk_size_gb if spec else 100
         vm = RunningInstance(
             name="vibeops-demo-gpu-vm",
-            zone=spec.compute.zone if spec else "us-central1-a",
+            zone=zone,
             machine_type=spec.compute.machine_type if spec else "n1-standard-4",
             status="RUNNING",
             internal_ip="10.128.0.2",
@@ -71,10 +100,26 @@ def _record_demo_result(session: Session) -> None:
                 if spec
                 else "1x nvidia-tesla-t4"
             ),
+            monthly_cost_usd=_demo_instance_monthly_usd(spec),
+        )
+        boot_disk = Disk(
+            name=f"{vm.name}-boot",
+            zone=zone,
+            size_gb=disk_size,
+            type="pd-ssd",
+            status="READY",
+            users=[vm.name],
+            monthly_cost_usd=estimate_disk_monthly_usd(disk_size, "pd-ssd"),
         )
         session.demo_vms = [v for v in session.demo_vms if v.name != vm.name] + [vm]
+        session.demo_disks = [d for d in session.demo_disks if d.name != boot_disk.name] + [
+            boot_disk
+        ]
     elif state.deployment_phase == DeploymentPhase.DESTROYED:
+        # Teardown removes the deployment's VM + its boot disk; the pre-existing default
+        # network and custom image persist (destroying a deployment doesn't delete those).
         session.demo_vms = []
+        session.demo_disks = []
 
 
 class DeployStartIn(BaseModel):

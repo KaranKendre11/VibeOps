@@ -47,7 +47,7 @@ export function Chrome() {
             onClick={() => setInventoryOpen(true)}
             className="liquid-glass rounded-pill px-4 py-2 text-xs text-fg-muted transition-colors duration-300 ease-quint hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
           >
-            <ScrambleHover text="VM Inventory" />
+            <ScrambleHover text="Cloud resources" />
           </button>
         )}
         {setupComplete && (

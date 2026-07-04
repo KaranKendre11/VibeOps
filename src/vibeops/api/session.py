@@ -34,7 +34,11 @@ class Session:
     gcp_context: GcpContext | None = None
     graph: Any = None  # per-session compiled LangGraph (holds the MemorySaver checkpoint)
     log_queue: Any = None  # queue.Queue for streaming live deploy/destroy logs over SSE
-    demo_vms: list[Any] = field(default_factory=list)  # simulated VM inventory for demo mode
+    # Simulated cloud resources for demo mode (never touch real GCP).
+    demo_vms: list[Any] = field(default_factory=list)
+    demo_disks: list[Any] = field(default_factory=list)
+    demo_images: list[Any] = field(default_factory=list)
+    demo_networks: list[Any] = field(default_factory=list)
     openai_key: str | None = None
     gcp_sa_json: dict[str, Any] | None = None
     gcp_project_id: str | None = None

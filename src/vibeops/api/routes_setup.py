@@ -12,11 +12,43 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from vibeops.api.deps import SessionDep
+from vibeops.api.session import Session
 from vibeops.core.analytics import track
 from vibeops.core.auth import list_gcp_projects, validate_gcp_credentials, validate_openai_key
 from vibeops.core.errors import AuthError
+from vibeops.models.results import CustomImage, Network
 
 router = APIRouter(prefix="/api/setup", tags=["setup"])
+
+
+def _seed_demo_resources(session: Session) -> None:
+    """Populate the simulated cloud-resource dashboard for demo mode.
+
+    Networks + a sample custom image represent pre-existing project resources so the
+    dashboard is populated the moment demo mode starts; VMs and their disks are added by
+    a (simulated) demo deployment. Everything here is fake — no GCP call is ever made.
+    """
+    session.demo_vms = []
+    session.demo_disks = []
+    session.demo_networks = [
+        Network(
+            name="default",
+            self_link=(
+                "https://www.googleapis.com/compute/v1/projects/"
+                "vibeops-demo/global/networks/default"
+            ),
+            auto_create_subnetworks=True,
+        )
+    ]
+    session.demo_images = [
+        CustomImage(
+            name="vibeops-demo-base-image",
+            disk_size_gb=50,
+            family="vibeops-demo",
+            status="READY",
+            creation_timestamp="2026-06-01T09:00:00.000-07:00",
+        )
+    ]
 
 
 class OpenAIKeyIn(BaseModel):
@@ -80,5 +112,6 @@ def demo(session: SessionDep) -> dict[str, Any]:
     session.reset_credentials()
     session.demo_mode = True
     session.setup_complete = True
+    _seed_demo_resources(session)
     track("demo_started", session_id=session.thread_id)
     return {"ok": True, "thread_id": session.thread_id}
