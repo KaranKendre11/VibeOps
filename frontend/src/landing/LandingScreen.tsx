@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { type RefObject, useCallback, useEffect, useRef, useState } from 'react';
 import {
   motion,
   useMotionTemplate,
@@ -24,6 +24,83 @@ const VIDEOS = {
 } as const;
 
 const EASE_OUT = [0.215, 0.61, 0.355, 1.0] as const;
+
+// ---------------------------------------------------------------------------
+// LoopVideo — a looping background clip with a subtle fade across the loop seam
+// ---------------------------------------------------------------------------
+
+/**
+ * The boomerang background clips play on native `loop` and are near-seamless, but
+ * the wrap from the last frame back to the first can still show a faint hitch. This
+ * eases the video's opacity down to ~0.72 and back over a short window on each side
+ * of the seam, so the wrap reads as a gentle dip rather than a cut. It is
+ * frame-accurate (requestVideoFrameCallback, falling back to rAF), writes opacity
+ * imperatively to avoid per-frame React re-renders, and is disabled (opacity pinned
+ * to 1) under reduced motion.
+ */
+function useLoopSeamFade(videoRef: RefObject<HTMLVideoElement>, enabled: boolean) {
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return;
+    if (!enabled) {
+      video.style.opacity = '1';
+      return;
+    }
+    const FADE_WINDOW = 0.3; // seconds on each side of the seam
+    const MIN_OPACITY = 0.72;
+    const usingRvfc = typeof video.requestVideoFrameCallback === 'function';
+    let handle = 0;
+    let stopped = false;
+
+    const sample = () => {
+      const d = video.duration;
+      if (d && Number.isFinite(d) && d > FADE_WINDOW * 2) {
+        const t = video.currentTime;
+        const dist = Math.min(t, d - t); // distance to the nearest loop seam (start/end)
+        const o = dist < FADE_WINDOW ? MIN_OPACITY + (1 - MIN_OPACITY) * (dist / FADE_WINDOW) : 1;
+        video.style.opacity = o.toFixed(3);
+      }
+      if (stopped) return;
+      handle = usingRvfc
+        ? video.requestVideoFrameCallback(sample)
+        : requestAnimationFrame(sample);
+    };
+    handle = usingRvfc
+      ? video.requestVideoFrameCallback(sample)
+      : requestAnimationFrame(sample);
+
+    return () => {
+      stopped = true;
+      if (usingRvfc) video.cancelVideoFrameCallback?.(handle);
+      else cancelAnimationFrame(handle);
+      video.style.opacity = '1';
+    };
+  }, [videoRef, enabled]);
+}
+
+interface LoopVideoProps {
+  src: string;
+  className?: string;
+}
+
+/** A muted, autoplaying, looping background clip with the loop-seam fade applied. */
+function LoopVideo({ src, className }: LoopVideoProps) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const reduce = useReducedMotion();
+  useLoopSeamFade(ref, !reduce);
+  return (
+    <video
+      ref={ref}
+      src={src}
+      autoPlay
+      muted
+      loop
+      playsInline
+      className={className}
+      style={{ willChange: 'opacity' }}
+    />
+  );
+}
 
 interface LandingProps {
   onEnter: () => void;
@@ -249,7 +326,8 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
     const START = 0.05;
     let duration = 0;
     let target = START; // where the cursor wants the playhead (updated on mousemove)
-    let current = START; // where it actually is (eased toward target each frame)
+    let current = START; // eased playhead, tracked toward target every frame
+    let seeking = false; // true while a seek is in flight — throttles seeks to the decode rate
     let rafId: number | null = null;
 
     // Nudge a frame so the paused hero shows imagery instead of a black rectangle
@@ -263,14 +341,28 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
       const step = (e.movementX * 0.8 * duration) / Math.max(1, window.innerWidth);
       target = Math.min(duration - 0.05, Math.max(0, target + step));
     };
-    // Ease the playhead toward the target once per frame (lerp) so the head glides
-    // instead of stepping — one smoothed seek per rAF, not a hard seek per mousemove
-    // event. Skips the seek once settled so an idle hero stays cheap.
+    // A seek finished — free the decoder for the next one.
+    const onSeeked = () => {
+      seeking = false;
+    };
+    // Ease `current` toward `target` every frame for smooth 60fps target-tracking,
+    // but only COMMIT a seek when the decoder is idle (no seek already in flight).
+    // #36 removed this guard and set video.currentTime every frame regardless, which
+    // piled seeks on the decoder faster than the heavy upscaled clip could serve
+    // them: currentTime raced ahead while almost no frames reached the screen and
+    // `seeking` stayed stuck true. Gating on the `seeked` event keeps at most one
+    // seek in flight, so seeks self-throttle to the decode rate while the eased
+    // playhead keeps gliding. (fastSeek is skipped on purpose: it snaps to the
+    // nearest keyframe, which makes a precise head-follow scrub look chunkier — and
+    // Chromium, the primary target, lacks it anyway.)
     const EASE = 0.18;
     const tick = () => {
-      if (duration && Math.abs(target - current) > 0.001) {
+      if (duration) {
         current += (target - current) * EASE;
-        video.currentTime = current;
+        if (!seeking && Math.abs(current - video.currentTime) > 0.006) {
+          seeking = true;
+          video.currentTime = current;
+        }
       }
       rafId = requestAnimationFrame(tick);
     };
@@ -283,14 +375,20 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
       return () => video.removeEventListener('loadedmetadata', onMeta);
     }
 
+    video.addEventListener('seeked', onSeeked);
     window.addEventListener('mousemove', onMove);
     rafId = requestAnimationFrame(tick);
     return () => {
       video.removeEventListener('loadedmetadata', onMeta);
+      video.removeEventListener('seeked', onSeeked);
       window.removeEventListener('mousemove', onMove);
       if (rafId != null) cancelAnimationFrame(rafId);
     };
   }, [reduce, autoplay]);
+
+  // On touch the hero plays a boomerang loop, so fade its loop seam like the other
+  // background clips. Disabled on desktop (the clip is paused and cursor-scrubbed).
+  useLoopSeamFade(videoRef, autoplay);
 
   return (
     <section className="relative flex h-screen min-h-[100dvh] flex-col overflow-hidden px-4 pb-8 pt-20 sm:px-6 sm:pb-12 sm:pt-24 md:px-8">
@@ -414,14 +512,7 @@ function CinematicText() {
       ref={ref}
       className="relative flex h-screen min-h-[100dvh] items-center justify-center overflow-hidden"
     >
-      <video
-        src={VIDEOS.cinematic}
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      <LoopVideo src={VIDEOS.cinematic} className="absolute inset-0 h-full w-full object-cover" />
       <div
         aria-hidden
         className="absolute inset-x-0 top-0 z-10 h-[180px]"
@@ -556,14 +647,7 @@ const METRICS = [
 function Metrics() {
   return (
     <section id="metrics" className="relative min-h-screen overflow-hidden">
-      <video
-        src={VIDEOS.metrics}
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      <LoopVideo src={VIDEOS.metrics} className="absolute inset-0 h-full w-full object-cover" />
       <div aria-hidden className="pointer-events-none absolute inset-0 bg-black/45" />
       <div className="relative z-10 mx-auto max-w-6xl px-6 pb-32 pt-32">
         <motion.p
@@ -636,14 +720,7 @@ function Capabilities() {
       id="capabilities"
       className="relative flex min-h-screen flex-col overflow-hidden px-8 py-24 sm:px-12 sm:py-28 md:px-16"
     >
-      <video
-        src={VIDEOS.tech}
-        autoPlay
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 h-full w-full object-cover"
-      />
+      <LoopVideo src={VIDEOS.tech} className="absolute inset-0 h-full w-full object-cover" />
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/30 to-black/70"
@@ -858,14 +935,7 @@ function Finale({ onEnter }: { onEnter: () => void }) {
       {/* The llama asset — a banner on mobile, pinned beside the pipeline on desktop */}
       <div className="relative w-full md:w-1/2">
         <div className="relative h-[38vh] overflow-hidden md:sticky md:top-0 md:h-screen">
-          <video
-            src={VIDEOS.footer}
-            autoPlay
-            muted
-            loop
-            playsInline
-            className="h-full w-full object-cover"
-          />
+          <LoopVideo src={VIDEOS.footer} className="h-full w-full object-cover" />
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent md:bg-gradient-to-r md:from-transparent md:via-black/5 md:to-black"
