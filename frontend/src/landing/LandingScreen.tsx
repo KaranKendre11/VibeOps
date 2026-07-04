@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   motion,
   useMotionTemplate,
@@ -9,6 +9,7 @@ import {
 } from 'framer-motion';
 import { ScrambleIn, ScrambleText } from '../components/scramble';
 import { BrandIcon } from '../components/BrandIcon';
+import { AmbientBlobs } from '../components/AmbientBlobs';
 
 // CloudFront background clips (abstract). Used exactly as provided.
 const VIDEOS = {
@@ -44,9 +45,12 @@ export function LandingScreen({ onEnter }: LandingProps) {
 
   return (
     <div
-      className="relative w-full bg-black text-white"
+      className="relative w-full text-white"
       style={{ fontFamily: '"Space Mono", monospace' }}
     >
+      {/* The app's signature Plexus/nebula field, mounted behind the landing's
+          videos so non-video sections show the same backdrop as the in-app screens. */}
+      <AmbientBlobs />
       <Navbar
         entranceComplete={entranceComplete}
         menuOpen={menuOpen}
@@ -332,9 +336,9 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
             animate={entranceComplete ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.9, ease: EASE_OUT, delay: 0.2 }}
           >
-            VibeOps turns a plain-English request into reviewed Terraform and a running GPU VM on
-            GCP. You describe the change, review the plan, approve — it provisions, then tears it all
-            down on command.
+            VibeOps is an AI agent for your whole GCP footprint — GPU VMs, Cloud SQL databases,
+            storage, and networking. Describe a change in plain English, review the Terraform it
+            writes, approve — it provisions, then tears it down on command.
           </motion.p>
           <motion.button
             type="button"
@@ -398,10 +402,10 @@ function CinematicText() {
           style={{ transform, opacity }}
           className="select-none text-center text-[22px] font-normal leading-[1.35] tracking-[-0.02em] text-white sm:text-[30px] md:text-[36px] lg:text-[42px]"
         >
-          An AI agent built to operate your cloud the way you describe it. VibeOps translates
-          plain-English intent into infrastructure as code. Every request becomes a reviewable
-          Terraform plan. It provisions, verifies, and reports back — then tears everything down on
-          command. Guesswork becomes a plan you approve.
+          An AI agent built to operate your GCP infrastructure the way you describe it. VibeOps turns
+          plain-English intent — from a GPU training box to a Cloud SQL database or a locked-down
+          bucket — into reviewable infrastructure as code. It provisions, verifies, and reports back,
+          then tears everything down on command. Guesswork becomes a plan you approve.
         </motion.p>
       </div>
     </section>
@@ -413,20 +417,20 @@ function CinematicText() {
 // ---------------------------------------------------------------------------
 
 const MANUAL_STEPS = [
-  'Pick a machine type',
-  'Hunt for a zone with GPU quota',
-  'Find an OS image that ships CUDA',
+  'Pick the service and machine type',
+  'Hunt for a region with quota (GPUs especially)',
   'Hand-write the Terraform',
-  'Open the right firewall ports',
-  'terraform validate, then apply',
-  'SSH in and install your stack',
-  'Debug the startup script',
+  'Wire up the VPC, subnets, and firewall rules',
+  'Set IAM roles and service accounts',
+  'Add startup scripts or container images',
+  'terraform validate, plan, then apply',
+  'Price it before the bill surprises you',
   'Remember to tear it all down',
 ] as const;
 
 function Problem() {
   return (
-    <section className="relative flex min-h-screen items-center overflow-hidden bg-black px-6 py-28 sm:px-10 md:px-16">
+    <section className="relative flex min-h-screen items-center overflow-hidden px-6 py-28 sm:px-10 md:px-16">
       {/* faint dot grid for texture between the two video sections */}
       <div
         aria-hidden
@@ -448,7 +452,7 @@ function Problem() {
             The problem
           </p>
           <h2 className="max-w-3xl text-[clamp(32px,6.5vw,64px)] font-light leading-[1.05] tracking-[-0.03em] text-white">
-            Nine steps to a GPU box.
+            Nine steps to stand up infrastructure.
             <br />
             Or one sentence.
           </h2>
@@ -495,7 +499,7 @@ function Problem() {
               </div>
               <p className="text-[15px] leading-relaxed text-white/90 sm:text-[17px]">
                 <span className="text-white/40">$ </span>
-                deploy a jupyter box on a T4 with port 8888 open to the web
+                stand up a private VPC with a locked-down subnet
               </p>
             </div>
             <p className="mt-6 text-[14px] leading-relaxed text-white/45 sm:text-[15px]">
@@ -514,9 +518,9 @@ function Problem() {
 // ---------------------------------------------------------------------------
 
 const METRICS = [
-  { value: '~60s', label: 'Prompt to Terraform plan' },
-  { value: '100%', label: 'Applies you review & approve' },
-  { value: '$0', label: 'Idle spend after teardown' },
+  { value: '~60s', label: 'From prompt to a reviewable plan' },
+  { value: '0', label: 'Credentials or state we store' },
+  { value: '1-click', label: 'Teardown, on your command' },
 ] as const;
 
 function Metrics() {
@@ -571,28 +575,28 @@ function Metrics() {
 
 const CAPABILITIES = [
   {
-    title: 'Intent extraction',
-    desc: 'One LLM pass pulls GPU, ports, OS, and region from your words — and never re-asks what you already said.',
+    title: 'Your keys, never stored',
+    desc: 'Bring your own OpenAI key and GCP service account. They live in an in-memory session tied to an httpOnly cookie — never written to disk, never shared across tenants.',
   },
   {
-    title: 'GPU-aware zones',
-    desc: 'Live GCP queries for accelerator stock and your project quota, ranked by free capacity.',
+    title: 'Deploys checked against an allowlist',
+    desc: 'Before anything applies, every generated file is re-checked at deploy time against a strict resource allowlist. Anything outside it fails closed, so a prompt cannot provision what you never asked for.',
   },
   {
-    title: 'Editable Terraform',
-    desc: 'Generated HCL sits beside the spec. Edit it inline; it re-validates before deploy.',
+    title: 'Costs held to your budget',
+    desc: 'Set a monthly ceiling and VibeOps holds every plan to it. Go over and the deploy gate fails closed — raise the cap to override, but never by accident.',
   },
   {
-    title: 'Real cost estimates',
-    desc: 'Estimated from a maintained GCP price table (Infracost when configured) and capped at your monthly budget, with override.',
+    title: 'Terraform you can actually edit',
+    desc: 'The generated HCL sits beside the spec, not behind a wizard. Tune machine types, disks, or firewall rules inline; it re-validates before deploy so an edit cannot ship something broken.',
   },
   {
-    title: 'Firewall, startup & containers',
-    desc: '“port 443 running nginx” becomes a firewall rule, container metadata, and a clickable URL.',
+    title: 'Beyond GPUs — your whole stack',
+    desc: 'The same review-then-apply loop provisions compute, Cloud SQL databases, storage, and networking. GPU training boxes are the flagship example, not the whole story.',
   },
   {
-    title: 'Inventory & recovery',
-    desc: 'See every VM from any screen, tear down in bulk, and retry a new zone when quota runs out.',
+    title: 'Inventory, teardown & recovery',
+    desc: 'See every resource you launched from any screen, tear down in bulk when you are done, and retry another zone when quota runs out.',
   },
 ] as const;
 
@@ -633,8 +637,9 @@ function Capabilities() {
           viewport={{ once: true, amount: 0.3 }}
           transition={{ duration: 1.0, delay: 0.2 }}
         >
-          VibeOps discovers your zones and machine types, then generates Terraform scoped to exactly
-          what you asked for — nothing runs until you say go.
+          The same guardrails hold whether you ask for a GPU box, a database, or a bucket: your keys
+          stay yours, every plan is scoped and priced, and nothing touches your cloud until you
+          approve.
         </motion.p>
       </div>
 
@@ -671,33 +676,155 @@ function Capabilities() {
 const STAGES = [
   {
     name: 'Understand',
-    desc: 'One LLM pass pulls every detail from your words — GPU, ports, OS, region — then asks plain-language follow-ups for anything still missing.',
+    desc: 'One LLM pass pulls every detail from your words — machine type, ports, image, region, database size — then asks plain-language follow-ups for anything still missing.',
   },
   {
     name: 'Locate',
-    desc: 'Live GCP lookups for accelerator availability and your project quota, ranked by free capacity, so the box lands where there is room.',
+    desc: 'Live GCP lookups for accelerator availability and project quota, ranked by free capacity, so what you asked for lands where there is room.',
   },
   {
     name: 'Generate',
-    desc: 'Renders valid, scoped Terraform — firewall rules, startup scripts, and containers included. Edit the HCL inline before anything runs.',
+    desc: 'Renders valid, scoped Terraform for exactly what you asked — firewall rules, startup scripts, and containers included.',
   },
   {
     name: 'Price',
-    desc: 'Estimates monthly cost from a maintained GCP price table (Infracost when configured) and holds it against your cap. Over budget fails closed unless you override.',
+    desc: 'Prices every plan before you approve it, from a maintained GCP price table (Infracost when configured), so the monthly estimate sits beside the resources that drive it.',
   },
   {
     name: 'Deploy',
-    desc: 'Checks the plan against a resource allowlist, then applies — only after you approve. The live log streams as resources come up.',
+    desc: 'Applies only after you approve — never before. The live log streams line by line as each resource comes up, so you watch it happen.',
   },
   {
     name: 'Live',
-    desc: 'Hands back a clickable URL the moment the box is up. One click tears everything down and stops the meter.',
+    desc: 'Hands back a clickable URL the moment it is live. One click tears everything down and stops the meter.',
   },
 ] as const;
 
+// Example prompts for the "How it works" deck — a stacked, cycling set that shows
+// the range of infrastructure VibeOps provisions, not just GPU boxes.
+const DECK_PROMPTS = [
+  { tag: 'GPU compute', text: 'Fine-tune a model on an A100 with Jupyter on 8888' },
+  { tag: 'Database', text: 'Postgres 15 on Cloud SQL — private IP, daily backups' },
+  { tag: 'Storage + CDN', text: 'A storage bucket behind a CDN for my static site' },
+  { tag: 'Firewall', text: 'An nginx web server on port 443, locked to my IP' },
+] as const;
+
+/**
+ * A stacked, floating deck of example prompts. The top card is the single
+ * interactive element (tap or arrow keys advance it); cards behind peek out,
+ * fanned. Auto-cycles to hint at the range, pausing on hover/focus. Under
+ * prefers-reduced-motion the auto-cycle is off and the stack sits still.
+ */
+function PromptDeck() {
+  const reduce = useReducedMotion();
+  const [active, setActive] = useState(0);
+  const [paused, setPaused] = useState(false);
+  const count = DECK_PROMPTS.length;
+  const spring = { type: 'spring', stiffness: 260, damping: 30 } as const;
+
+  const advance = useCallback(() => setActive((i) => (i + 1) % count), [count]);
+  const retreat = useCallback(() => setActive((i) => (i - 1 + count) % count), [count]);
+
+  useEffect(() => {
+    if (reduce || paused) return;
+    const id = setInterval(advance, 3800);
+    return () => clearInterval(id);
+  }, [reduce, paused, advance]);
+
+  return (
+    <div
+      className="mt-8"
+      onMouseEnter={() => setPaused(true)}
+      onMouseLeave={() => setPaused(false)}
+      onFocusCapture={() => setPaused(true)}
+      onBlurCapture={() => setPaused(false)}
+    >
+      <p className="mb-3 text-[11px] uppercase tracking-[0.18em] text-white/30">
+        Your prompt · one of many
+      </p>
+
+      {/* The stack. Fixed height gives the fanned cards behind room to peek. */}
+      <div className="relative h-[164px] sm:h-[144px]">
+        {DECK_PROMPTS.map((p, i) => {
+          const depth = (i - active + count) % count; // 0 = on top of the stack
+          const isTop = depth === 0;
+          return (
+            <motion.button
+              key={p.text}
+              type="button"
+              aria-hidden={!isTop}
+              tabIndex={isTop ? 0 : -1}
+              aria-label={
+                isTop
+                  ? `Example prompt ${i + 1} of ${count}, ${p.tag}: ${p.text}. Activate for the next example.`
+                  : undefined
+              }
+              onClick={advance}
+              onKeyDown={(e) => {
+                if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  advance();
+                } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  retreat();
+                }
+              }}
+              className="absolute inset-x-0 top-0 block w-full cursor-pointer rounded-xl border border-white/10 bg-white/[0.03] p-5 text-left backdrop-blur-md focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              initial={false}
+              animate={
+                reduce
+                  ? { opacity: depth > 2 ? 0 : 1 - depth * 0.28, y: depth * 8, scale: 1 - depth * 0.04, rotate: 0 }
+                  : {
+                      opacity: depth > 2 ? 0 : 1 - depth * 0.32,
+                      y: depth * 12,
+                      scale: 1 - depth * 0.05,
+                      rotate: isTop ? 0 : (depth % 2 === 0 ? 1 : -1) * depth * 0.7,
+                    }
+              }
+              transition={reduce ? { duration: 0 } : spring}
+              style={{ zIndex: count - depth }}
+            >
+              <span className="mb-2 block text-[10px] uppercase tracking-[0.22em] text-white/35">
+                {p.tag}
+              </span>
+              <span className="block text-[15px] leading-relaxed text-white/90 sm:text-[17px]">
+                <span className="text-white/40">&gt; </span>
+                {p.text}
+              </span>
+            </motion.button>
+          );
+        })}
+      </div>
+
+      {/* Affordance: position dots (also clickable) + a status hint. */}
+      <div className="mt-4 flex items-center gap-3">
+        <div className="flex gap-1.5">
+          {DECK_PROMPTS.map((p, i) => (
+            <button
+              key={p.text}
+              type="button"
+              aria-label={`Show prompt ${i + 1}: ${p.tag}`}
+              aria-current={i === active}
+              onClick={() => setActive(i)}
+              className="h-1.5 rounded-full transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+              style={{
+                width: i === active ? 22 : 8,
+                backgroundColor: i === active ? 'rgba(255,255,255,0.8)' : 'rgba(255,255,255,0.25)',
+              }}
+            />
+          ))}
+        </div>
+        <span className="text-[11px] text-white/30">
+          {reduce ? 'tap to cycle' : 'auto-cycling · tap to advance'}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function Finale({ onEnter }: { onEnter: () => void }) {
   return (
-    <section id="how" className="relative bg-black md:flex md:items-stretch">
+    <section id="how" className="relative md:flex md:items-stretch">
       {/* The llama asset — a banner on mobile, pinned beside the pipeline on desktop */}
       <div className="relative w-full md:w-1/2">
         <div className="relative h-[38vh] overflow-hidden md:sticky md:top-0 md:h-screen">
@@ -717,7 +844,7 @@ function Finale({ onEnter }: { onEnter: () => void }) {
       </div>
 
       {/* How it works + close */}
-      <div className="relative w-full px-6 py-20 sm:px-10 md:w-1/2 md:px-14 md:py-24">
+      <div className="relative w-full bg-black/50 px-6 py-20 backdrop-blur-sm sm:px-10 md:w-1/2 md:bg-black/40 md:px-14 md:py-24">
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -730,20 +857,15 @@ function Finale({ onEnter }: { onEnter: () => void }) {
           <h2 className="text-[clamp(28px,4.5vw,48px)] font-light leading-[1.05] tracking-[-0.03em] text-white">
             One sentence in.
             <br />
-            A running box out.
+            A running resource out.
           </h2>
           <p className="mt-6 max-w-md text-[14px] leading-relaxed text-white/45 sm:text-[16px]">
-            Every request runs the same six-stage pipeline. The agent pauses for you at each
-            decision — nothing touches your cloud until you approve.
+            Every request runs the same six-stage pipeline — a GPU box, a database, a bucket, a
+            network. The agent pauses for you at each decision; nothing touches your cloud until you
+            approve.
           </p>
 
-          <div className="mt-8 rounded-xl border border-white/10 bg-white/[0.02] p-5 backdrop-blur-sm">
-            <p className="mb-2 text-[11px] uppercase tracking-[0.18em] text-white/30">Your prompt</p>
-            <p className="text-[15px] leading-relaxed text-white/90 sm:text-[18px]">
-              <span className="text-white/40">&gt; </span>
-              Jupyter notebook on a T4 with port 8888 open to the web
-            </p>
-          </div>
+          <PromptDeck />
         </motion.div>
 
         <div className="relative mt-12 border-l border-white/10 pl-8">
