@@ -30,6 +30,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `deployment.png`, `inventory.png`, `landing-problem.png`, `landing-finale.png`,
   and `landing-capabilities.png` were added, and `landing.png` and `review.png`
   were refreshed. (`README.md`, `screenshots/`)
+- **Optional remote Terraform state on a GCS backend (issue #3, 2026-07-03).** Set
+  `VIBEOPS_TF_STATE_BUCKET` to a GCS bucket and each deployment now writes a
+  `backend "gcs"` block and runs `terraform init -backend-config=…` with a unique
+  per-deployment prefix (`<VIBEOPS_TF_STATE_PREFIX>/<project>/<uuid>`), so state lives
+  durably in the cloud instead of an ephemeral temp dir — a lost process/session no
+  longer orphans real VMs or breaks `destroy` (which keeps running against the
+  persisted state). The prefix is recorded on `GraphState.terraform_state_prefix`.
+  When the bucket is unset, behavior is unchanged (local temp-dir state) and a warning
+  is logged that state is ephemeral. (`src/vibeops/terraform/backend.py`,
+  `src/vibeops/config.py`, `src/vibeops/terraform/runner.py`,
+  `src/vibeops/agents/iac.py`, `src/vibeops/models/state.py`)
 
 ### Changed
 
