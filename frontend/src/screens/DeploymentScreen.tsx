@@ -33,6 +33,7 @@ export function DeploymentScreen() {
   const demoMode = useStore((s) => s.demoMode);
   const applySnapshot = useStore((s) => s.applySnapshot);
   const setInventoryOpen = useStore((s) => s.setInventoryOpen);
+  const resetPlan = useStore((s) => s.resetPlan);
 
   const phase = graph?.deployment_phase ?? 'idle';
   const inProgress = !TERMINAL.includes(phase);
@@ -235,7 +236,7 @@ export function DeploymentScreen() {
             Everything created for this deployment has been destroyed. You are billed for nothing.
           </p>
           <div className="mt-5">
-            <Button variant="secondary" onClick={() => window.location.reload()}>
+            <Button variant="secondary" onClick={resetPlan}>
               Start something new
             </Button>
           </div>

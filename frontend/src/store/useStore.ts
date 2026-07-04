@@ -131,6 +131,16 @@ interface AppStore {
   canNavigate: (target: StepKey) => NavDecision;
   /** UI-only navigation to an already-reached step (never re-runs the graph). */
   navigateTo: (target: StepKey) => void;
+  /**
+   * Start a fresh plan WITHIN the app: clear the run/graph state and drop back to the
+   * first pipeline step (Describe), keeping credentials + setup. Powers "Start over".
+   */
+  resetPlan: () => void;
+  /**
+   * Full client-side wipe (credentials, setup, and plan). Pairs with
+   * ``api.resetCredentials()`` + ``exitToLanding()`` for the "clear credentials & exit"
+   * control; on re-entry the user goes back through setup.
+   */
   reset: () => void;
 }
 
@@ -204,6 +214,11 @@ export const useStore = create<AppStore>((set, get) => ({
     const step = JOURNEY_STEPS.find((s) => s.key === target);
     if (step) set({ stage: step.stage }); // stage only — graph state is untouched.
   },
+
+  resetPlan: () =>
+    // Keep setupComplete/demoMode/costCap/credentials — only the plan is discarded.
+    // stage:'idle' lands on the Describe screen, where a new plan begins.
+    set({ stage: 'idle', graph: null, maxReached: 0 }),
 
   reset: () =>
     set({

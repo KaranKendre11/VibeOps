@@ -57,6 +57,10 @@ export const api = {
   createSession: () => post<{ thread_id: string }>('/api/session'),
   getConfig: () => request<AppConfig>('/api/config'),
 
+  // ---- session ----
+  // Clear all credentials/setup server-side (the "clear credentials & exit" control).
+  resetCredentials: () => post<{ ok: boolean }>('/api/session/reset'),
+
   // ---- setup ----
   validateOpenAI: (key: string) =>
     post<ValidateResult>('/api/setup/validate-openai', { key }),
@@ -79,7 +83,10 @@ export const api = {
   reviewReestimate: () => post<Snapshot>('/api/review/reestimate'),
 
   // ---- deployment ----
-  startDeploy: () => post<{ status: string }>('/api/deploy/start'),
+  // Pass overrideCostCap=true to deploy a plan that exceeds the monthly cap (the
+  // backend rejects it with 409 otherwise). Omitting it keeps the gated default.
+  startDeploy: (overrideCostCap = false) =>
+    post<{ status: string }>('/api/deploy/start', { override_cost_cap: overrideCostCap }),
   retryDeploy: () => post<{ status: string }>('/api/deploy/retry'),
   destroy: () => post<{ status: string }>('/api/deploy/destroy'),
 

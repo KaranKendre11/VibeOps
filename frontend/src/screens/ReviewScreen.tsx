@@ -1,5 +1,7 @@
 import { useMemo, useState } from 'react';
 import * as Tabs from '@radix-ui/react-tabs';
+import * as Dialog from '@radix-ui/react-dialog';
+import { AnimatePresence, motion } from 'framer-motion';
 import { Reveal, RevealGroup } from '../components/Reveal';
 import { api, ApiError } from '../api/client';
 import type { DeploymentSpec, Snapshot } from '../api/types';
@@ -8,6 +10,7 @@ import { Panel, PanelHeader } from '../components/Panel';
 import { Button } from '../components/Button';
 import { ScrambleHover, ScrambleReveal } from '../components/scramble';
 import { cn, gpuLabel, humanize, usd } from '../lib/utils';
+import { QUINT } from '../lib/motion';
 
 interface SpecRow {
   label: string;
@@ -68,17 +71,18 @@ export function ReviewScreen() {
   const [activeTab, setActiveTab] = useState(fileNames[0] ?? 'main.tf');
   const [busy, setBusy] = useState<'approve' | 'cancel' | 'save' | 'reestimate' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showCapConfirm, setShowCapConfirm] = useState(false);
 
   const dirty = useMemo(
     () => fileNames.some((f) => (edited[f] ?? '') !== (files[f] ?? '')),
     [edited, files, fileNames],
   );
 
-  async function approve() {
+  async function runDeploy(overrideCostCap: boolean) {
     setBusy('approve');
     setError(null);
     try {
-      await api.startDeploy();
+      await api.startDeploy(overrideCostCap);
       // Optimistically enter the deployment screen. The background worker may not
       // have flipped the phase yet, so we transition locally and let the log stream
       // (opened by DeploymentScreen) resync the authoritative state on completion.
@@ -92,6 +96,23 @@ export function ReviewScreen() {
       setError(e instanceof ApiError ? e.message : 'Could not start deployment.');
       setBusy(null);
     }
+  }
+
+  function approve() {
+    // Over-cap plans require an explicit confirmation before the override is sent;
+    // under-cap deploys proceed immediately, exactly as before.
+    if (capExceeded) {
+      setShowCapConfirm(true);
+      return;
+    }
+    void runDeploy(false);
+  }
+
+  function confirmOverride() {
+    // Close the dialog before deploying: a successful start swaps in the deployment
+    // screen (unmounting this one), so we avoid updating an unmounting component.
+    setShowCapConfirm(false);
+    void runDeploy(true);
   }
 
   async function cancel() {
@@ -374,6 +395,72 @@ export function ReviewScreen() {
         </div>
       </Reveal>
       </RevealGroup>
+
+      {/* Over-cap override confirmation. Only reachable when cost_cap_exceeded is set;
+          the primary (prominent) action steers the user back to reduce & re-estimate. */}
+      <Dialog.Root
+        open={showCapConfirm}
+        onOpenChange={(next) => {
+          if (!next) setShowCapConfirm(false);
+        }}
+      >
+        <AnimatePresence>
+          {showCapConfirm && (
+            <Dialog.Portal forceMount>
+              <Dialog.Overlay asChild forceMount>
+                <motion.div
+                  className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                />
+              </Dialog.Overlay>
+              <Dialog.Content asChild forceMount>
+                <motion.div
+                  className="surface-solid fixed left-1/2 top-1/2 z-50 w-[min(92vw,30rem)] -translate-x-1/2 -translate-y-1/2 rounded-md p-6"
+                  initial={{ opacity: 0, scale: 0.96, y: '-46%', x: '-50%' }}
+                  animate={{ opacity: 1, scale: 1, y: '-50%', x: '-50%' }}
+                  exit={{ opacity: 0, scale: 0.96 }}
+                  transition={{ duration: 0.24, ease: QUINT }}
+                >
+                  <Dialog.Title className="font-mono text-xs uppercase tracking-[0.2em] text-amber-300">
+                    Over your monthly cap
+                  </Dialog.Title>
+                  <Dialog.Description className="mt-3 text-sm leading-relaxed text-fg-muted">
+                    This plan is estimated at{' '}
+                    <span className="font-semibold text-fg">{usd(monthly)}/mo</span>, which is over
+                    your cap of <span className="font-semibold text-fg">{usd(cap)}/mo</span>.
+                    Deploying anyway creates real cloud resources billed to your account and may run
+                    over budget.
+                  </Dialog.Description>
+                  <div className="mt-4 rounded-sm border border-line bg-black/30 px-4 py-3">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-fg-dim">Estimated monthly</span>
+                      <span className="font-medium text-amber-300">{usd(monthly)}</span>
+                    </div>
+                    <div className="mt-1.5 flex items-center justify-between text-sm">
+                      <span className="text-fg-dim">Your cap</span>
+                      <span className="font-medium text-fg">{usd(cap)}</span>
+                    </div>
+                  </div>
+                  <p className="mt-4 text-xs text-fg-dim">
+                    Suggested: reduce the spec (smaller machine or disk, fewer GPUs), save, and
+                    re-estimate the cost before deploying.
+                  </p>
+                  <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <Button variant="danger" size="sm" onClick={confirmOverride}>
+                      Deploy anyway
+                    </Button>
+                    <Button variant="primary" size="sm" onClick={() => setShowCapConfirm(false)}>
+                      Go back &amp; reduce
+                    </Button>
+                  </div>
+                </motion.div>
+              </Dialog.Content>
+            </Dialog.Portal>
+          )}
+        </AnimatePresence>
+      </Dialog.Root>
     </div>
   );
 }
