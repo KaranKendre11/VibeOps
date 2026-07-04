@@ -122,6 +122,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **In-app screens show the Plexus/nebula background again (issue #29,
+  2026-07-04).** A prior "fix white scrollbar" change made `html, body, #root`
+  opaque, which covered the `-z-10` ambient field on every in-app screen (the
+  Plexus canvas was still painting — just hidden). `App.tsx` now wraps the
+  in-app content in an `isolate` stacking context so the ambient field paints
+  above the opaque root; the landing and the scrollbar fix are unchanged.
+  (`frontend/src/App.tsx`)
+
+- **Landing "Operational Metrics" align correctly — "1-click" no longer wraps
+  to a second line (issue #30, 2026-07-04).** The large metric value broke at
+  the hyphen; `whitespace-nowrap` on the value plus top-aligned grid cells keep
+  all three metrics on one line and aligned at every width.
+  (`frontend/src/landing/LandingScreen.tsx`)
+
+- **Landing hero no longer shows a black screen on mobile/touch (issue #31,
+  2026-07-04).** The hero video was scrubbed by cursor movement, so on touch
+  (no cursor) it never advanced and stayed black. It now autoplays on
+  coarse-pointer / touch devices, while desktop cursor-scrubbing and
+  `prefers-reduced-motion` behavior are unchanged.
+  (`frontend/src/landing/LandingScreen.tsx`)
+
 - **Monthly cost cap is now enforced at the deploy gate (2026-07-03).** Previously
   the cost cap was computed and shown in the UI but never enforced on the server, so
   an over-budget plan could still be deployed — including by a direct API call that
