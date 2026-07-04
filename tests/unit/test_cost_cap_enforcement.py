@@ -180,7 +180,7 @@ def _run_iac_with_cost(cost_cap_usd: float, monthly_cost: float) -> GraphState:
     estimate = CostEstimate(
         hourly_usd=monthly_cost / 730.0,
         monthly_usd=monthly_cost,
-        source="cloud_catalog",
+        source="price_table",
         confidence="medium",
     )
     config = {
