@@ -81,6 +81,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Boomerang landing videos fade softly across the loop seam (2026-07-04).** A new
+  `LoopVideo` component gently dips each looping background clip's opacity as it wraps,
+  smoothing any residual hitch at the boomerang turnaround. (The hero cursor-scrub was
+  also hardened to a decoder-throttled seek loop so the #36 head-follow stays smooth
+  instead of stalling.) (`frontend/src/landing/LandingScreen.tsx`)
+
 - **Smoother hero cursor-scrub on the landing page (issue #36, 2026-07-04).** The
   llama's head-follow now eases the video playhead toward the cursor target with a
   `requestAnimationFrame` lerp (one smoothed seek per frame) instead of hard-seeking
