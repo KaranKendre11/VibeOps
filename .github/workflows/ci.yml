@@ -15,6 +15,14 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Set up Terraform
+        # The terraform-runner unit tests locate the binary via _find_terraform()
+        # before mocking the subprocess, so the CLI must be on PATH. terraform_wrapper
+        # is disabled so subprocess stdout parsing sees raw terraform output.
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_wrapper: false
+
       - name: Install project and dev tools
         run: |
           python -m pip install --upgrade pip
