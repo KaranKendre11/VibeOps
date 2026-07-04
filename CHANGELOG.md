@@ -81,6 +81,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Landing background videos now boomerang-loop (forward→reverse, no cut) and
+  are upscaled (issue #37, 2026-07-04).** The cinematic, metrics, capabilities and
+  finale clips play forward then reverse seamlessly on loop instead of hard-cutting
+  back to the start; the hero uses an upscaled scrub clip on desktop and a boomerang
+  that autoplays on touch. Assets are now served from R2
+  (`vibeops.assets.karankendre.space`) rather than the old CloudFront URLs.
+  (`frontend/src/landing/LandingScreen.tsx`)
+
 - **Landing capabilities grid expanded from 4 vague cards to 6 specific ones
   (2026-07-03).** Intent extraction, GPU-aware zones, Editable Terraform, Real
   cost estimates, Firewall/startup & containers, and Inventory & recovery — with

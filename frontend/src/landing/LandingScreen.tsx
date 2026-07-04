@@ -11,16 +11,16 @@ import { ScrambleIn, ScrambleText } from '../components/scramble';
 import { BrandIcon } from '../components/BrandIcon';
 import { AmbientBlobs } from '../components/AmbientBlobs';
 
-// CloudFront background clips (abstract). Used exactly as provided.
+// Background clips hosted on R2 (cdn). The *_boomerang_* clips play forward then
+// reverse seamlessly on native loop; the hero uses a scrub clip on desktop (fine
+// pointer) and a boomerang that autoplays on touch. All upscaled.
 const VIDEOS = {
-  hero: 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_083515_290e5a10-0b95-41af-a5e2-32b6389baa4d.mp4',
-  cinematic:
-    'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_092455_089c54f8-3b03-4966-9df1-e9746063d0ef.mp4',
-  metrics:
-    'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_095810_ecea3dd2-fc5e-4e41-8696-4219290b6589.mp4',
-  tech: 'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_095750_32a52ce0-2005-45c9-9093-41f03fde9530.mp4',
-  footer:
-    'https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260622_080203_fd7f4f85-3a86-4837-8192-85e7bfe68e75.mp4',
+  hero: 'https://vibeops.assets.karankendre.space/first_screen_llama_head_upscaled.mp4',
+  heroLoop: 'https://vibeops.assets.karankendre.space/first_screen_llama_boomerang_upscaled.mp4',
+  cinematic: 'https://vibeops.assets.karankendre.space/cinematics_boomerang_upscaled.mp4',
+  metrics: 'https://vibeops.assets.karankendre.space/metrics_boomerang_upscaled.mp4',
+  tech: 'https://vibeops.assets.karankendre.space/tech_capabilities_boomerang_upscaled.mp4',
+  footer: 'https://vibeops.assets.karankendre.space/footer_final_upscaled.mp4',
 } as const;
 
 const EASE_OUT = [0.215, 0.61, 0.355, 1.0] as const;
@@ -297,7 +297,7 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
           page's black background). Content is lifted above it with z-10. */}
       <video
         ref={videoRef}
-        src={VIDEOS.hero}
+        src={autoplay ? VIDEOS.heroLoop : VIDEOS.hero}
         muted
         playsInline
         autoPlay={autoplay}
