@@ -52,6 +52,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Monthly cost cap is now enforced at the deploy gate (2026-07-03).** Previously
+  the cost cap was computed and shown in the UI but never enforced on the server, so
+  an over-budget plan could still be deployed — including by a direct API call that
+  bypassed the review screen. `POST /api/deploy/start` now rejects an over-cap plan
+  with `409 Conflict` unless the caller explicitly opts in with
+  `{"override_cost_cap": true}`, and the graph's `approval_router` fails closed as
+  defence in depth (an over-cap plan is cancelled unless `cost_cap_override` is
+  literal `True`), so the resume endpoint can't be used to sidestep the check. The
+  session's monthly cap is now the single source of truth: the IaC agent reads it
+  from the graph context instead of an unrelated hardcoded `$500` default, so the
+  "cap exceeded" flag matches the cap you actually set at setup.
+  (`src/vibeops/api/routes_deploy.py`, `src/vibeops/graph/orchestrator.py`,
+  `src/vibeops/agents/iac.py`, `src/vibeops/api/graph_runtime.py`)
+
 - **White vertical bar on the right whenever a page scrolled, on Chromium
   (2026-07-03).** The custom `::-webkit-scrollbar` styled only the thumb, so
   Chromium fell back to painting the track white, and the `<html>` element had no

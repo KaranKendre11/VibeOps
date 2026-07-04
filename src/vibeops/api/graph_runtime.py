@@ -44,7 +44,10 @@ def derive_stage(state: GraphState) -> str:
 def thread_config(session: Session) -> dict[str, Any]:
     """Assemble the LangGraph `configurable` from the session (creds built lazily here)."""
     session.ensure_clients()
-    configurable: dict[str, Any] = {"thread_id": session.thread_id}
+    configurable: dict[str, Any] = {
+        "thread_id": session.thread_id,
+        "cost_cap_usd": session.monthly_cost_cap_usd,
+    }
     if session.llm_client is not None or session.gcp_context is not None:
         configurable["llm_client"] = session.llm_client
         configurable["gcp_context"] = session.gcp_context

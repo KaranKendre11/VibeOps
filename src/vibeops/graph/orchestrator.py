@@ -14,10 +14,17 @@ from vibeops.models.state import FlowStage, GraphState
 
 
 def approval_router(state: GraphState) -> Literal["deployment", "cancelled"]:
-    """Fails closed — only literal True unlocks deployment."""
-    if state.approved is True:
-        return "deployment"
-    return "cancelled"
+    """Fails closed — deploy only when approved AND within the cost cap.
+
+    Defence in depth behind the deploy route's 409: even if ``approved`` is forced True by a
+    direct API call, an over-cap plan (``cost_cap_exceeded``) is cancelled unless the user has
+    explicitly set ``cost_cap_override`` to literal True.
+    """
+    if state.approved is not True:
+        return "cancelled"
+    if state.cost_cap_exceeded and state.cost_cap_override is not True:
+        return "cancelled"
+    return "deployment"
 
 
 def destroy_router(state: GraphState) -> Literal["destroy", "blocked"]:
