@@ -15,7 +15,9 @@ from vibeops.terraform.error_parser import parse_error
 from vibeops.terraform.errors import TerraformApplyError, TerraformDestroyError, TerraformPlanError
 
 
-def _make_on_log(local: list[str], sink: Callable[[str], None] | None) -> Callable[[str], None]:
+def _make_on_log(
+    local: list[str], sink: Callable[[str], None] | None
+) -> Callable[[str], None]:
     """Return an on_log callback that appends to ``local`` and also forwards to ``sink`` (if given).
 
     Lets the API stream live terraform output by passing a queue-push ``on_log`` via graph config,
@@ -276,7 +278,7 @@ def destroy_agent(
                 list(state.deployment_logs) + destroy_logs + result.full_log.splitlines()
             ),
             "created_resources": [],
-            "destroy_confirmed": False,  # re-close gate after destroy completes
+            "destroy_confirmed": False,   # re-close gate after destroy completes
             "destroy_requested": False,
         }
     )

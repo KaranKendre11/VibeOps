@@ -3,7 +3,6 @@
 Extracted from ``vibeops.ui.review`` so the FastAPI layer and unit tests can use it without
 Streamlit.
 """
-
 from __future__ import annotations
 
 from pathlib import Path
