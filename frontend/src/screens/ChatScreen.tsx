@@ -51,6 +51,37 @@ const DEMO_SUMMARY =
   'and size the disk for notebooks. Next I check live zone capacity and quota, then show you the ' +
   'plan and cost to review before anything is created.';
 
+// The model emits this control sentinel on its confirmation turn. The backend
+// strips it from the stored conversation but NOT from the live token stream, so
+// without this it briefly flashes in the chat bubble while streaming.
+const PROCEED_SENTINEL = '[[PROCEED]]';
+
+/**
+ * Remove the `[[PROCEED]]` control sentinel from streamed text, for display.
+ *
+ * Robust against the sentinel arriving split across SSE chunks (e.g. one token
+ * ends `…[[PRO` and the next is `CEED]]`):
+ *  (a) every complete `[[PROCEED]]` occurrence is removed, and
+ *  (b) a trailing partial sentinel — a suffix of `text` that is a non-empty
+ *      prefix of the sentinel (e.g. a dangling `[[PRO`) — is withheld so it is
+ *      never shown. It reappears naturally once more tokens arrive, or is gone
+ *      for good once the stream completes and the cleaned message swaps in.
+ *
+ * Pure and side-effect-free so the raw stream can still be accumulated verbatim.
+ */
+function stripProceedSentinel(text: string): string {
+  // (a) drop every complete occurrence.
+  let out = text.split(PROCEED_SENTINEL).join('');
+  // (b) withhold a dangling partial sentinel at the very end of the text.
+  for (let n = Math.min(PROCEED_SENTINEL.length - 1, out.length); n > 0; n--) {
+    if (out.endsWith(PROCEED_SENTINEL.slice(0, n))) {
+      out = out.slice(0, out.length - n);
+      break;
+    }
+  }
+  return out;
+}
+
 export function ChatScreen() {
   const demoMode = useStore((s) => s.demoMode);
   if (demoMode) return <DemoWalkthrough />;
@@ -203,6 +234,9 @@ function LiveChat() {
   }
 
   const showConversation = hasConversation || pendingUser !== null;
+  // Never render the raw stream directly — strip the `[[PROCEED]]` sentinel first
+  // so it can't flash in the bubble mid-stream.
+  const streamDisplay = stripProceedSentinel(streamText);
 
   return (
     <div className="mx-auto flex min-h-[72vh] max-w-3xl flex-col px-4">
@@ -215,7 +249,7 @@ function LiveChat() {
           </AnimatePresence>
           {pendingUser && <ChatBubble role="user" content={pendingUser} />}
           {streaming && (
-            <ChatBubble role="agent" content={streamText} streaming={streamText.length === 0} />
+            <ChatBubble role="agent" content={streamDisplay} streaming={streamDisplay.length === 0} />
           )}
           {busy && !streaming && pendingUser && <ThinkingRow />}
         </div>
