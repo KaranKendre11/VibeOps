@@ -15,7 +15,7 @@ class CostLineItem(BaseModel):
 class CostEstimate(BaseModel):
     hourly_usd: float
     monthly_usd: float
-    source: Literal["infracost", "cloud_catalog"]
+    source: Literal["infracost", "price_table"]
     confidence: Literal["high", "medium", "low"]
     breakdown: list[CostLineItem] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)

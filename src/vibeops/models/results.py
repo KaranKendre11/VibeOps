@@ -73,16 +73,6 @@ class NetworksResult(BaseModel):
     networks: list[Network]
 
 
-class PriceEstimate(BaseModel):
-    machine_type: str
-    zone: str
-    gpu_type: str
-    gpu_count: int
-    preemptible: bool
-    hourly_usd: float
-    monthly_usd_est: float
-
-
 class ChatResult(BaseModel):
     content: str
     input_tokens: int

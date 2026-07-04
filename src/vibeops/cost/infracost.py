@@ -16,7 +16,7 @@ _TIMEOUT = 30
 def run_infracost(tf_dir: Path) -> CostEstimate | None:
     """Shell out to infracost and parse the result.
 
-    Returns None on any failure so the caller can fall back to Cloud Catalog.
+    Returns None on any failure so the caller can fall back to the GCP price table.
     """
     try:
         proc = subprocess.run(
@@ -37,7 +37,7 @@ def run_infracost(tf_dir: Path) -> CostEstimate | None:
         logger.warning("infracost timed out after %ds", _TIMEOUT)
         return None
     except FileNotFoundError:
-        logger.info("infracost binary not found; using Cloud Catalog fallback")
+        logger.info("infracost binary not found; using price-table fallback")
         return None
 
     if proc.returncode != 0:

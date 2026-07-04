@@ -53,8 +53,13 @@ def _parse_machine_resources(machine_type: str, ctx: GcpContext) -> tuple[int, f
         return vcpus, vcpus * 3.75  # n1 standard ratio
 
 
-def estimate_from_catalog(spec: DeploymentSpec, ctx: GcpContext) -> CostEstimate:
-    """Estimate cost from GCP pricing constants + machine type lookup."""
+def estimate_from_price_table(spec: DeploymentSpec, ctx: GcpContext) -> CostEstimate:
+    """Estimate cost from the maintained GCP price table + a Compute machine-shape lookup.
+
+    Rates come from ``pricing_constants.py`` (a hand-maintained snapshot of GCP's
+    published prices); the Compute ``MachineTypesClient`` is used only to resolve
+    vCPU/RAM for the machine type. This does NOT call the GCP Cloud Billing Catalog API.
+    """
     machine_type = spec.compute.machine_type
     family = _machine_family(machine_type)
 
@@ -104,7 +109,7 @@ def estimate_from_catalog(spec: DeploymentSpec, ctx: GcpContext) -> CostEstimate
     return CostEstimate(
         hourly_usd=total_hourly,
         monthly_usd=total_hourly * HOURS_PER_MONTH,
-        source="cloud_catalog",
+        source="price_table",
         confidence="medium",
         breakdown=breakdown,
         notes=notes,

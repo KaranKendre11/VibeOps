@@ -70,7 +70,7 @@ def test_reestimate_updates_cost() -> None:
         "cost_estimate": {
             "monthly_usd": 200.0,
             "hourly_usd": 0.27,
-            "source": "cloud_catalog",
+            "source": "price_table",
             "confidence": "low",
             "breakdown": [],
             "notes": [],

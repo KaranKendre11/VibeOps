@@ -9,7 +9,7 @@ def _estimate(monthly_usd: float) -> CostEstimate:
     return CostEstimate(
         hourly_usd=monthly_usd / 730.0,
         monthly_usd=monthly_usd,
-        source="cloud_catalog",
+        source="price_table",
         confidence="medium",
         estimated_at=datetime.now(UTC),
     )
