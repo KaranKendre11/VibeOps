@@ -43,7 +43,7 @@ class TestEditSaveValid:
             "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.services.review.check_resource_allowlist",
+            "vibeops.services.review.check_dir_allowlist",
             return_value=MagicMock(ok=True, violations=[]),
         ):
             new_state, err = apply_user_edit(state, "main.tf", edited)
@@ -59,7 +59,7 @@ class TestEditSaveValid:
             "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.services.review.check_resource_allowlist",
+            "vibeops.services.review.check_dir_allowlist",
             return_value=MagicMock(ok=True, violations=[]),
         ):
             new_state, err = apply_user_edit(state, "main.tf", edited)
@@ -76,7 +76,7 @@ class TestEditSaveValid:
             "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.services.review.check_resource_allowlist",
+            "vibeops.services.review.check_dir_allowlist",
             return_value=MagicMock(ok=True, violations=[]),
         ):
             new_state, _ = apply_user_edit(state, "main.tf", edited)
@@ -92,7 +92,7 @@ class TestEditSaveValid:
             "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.services.review.check_resource_allowlist",
+            "vibeops.services.review.check_dir_allowlist",
             return_value=MagicMock(ok=True, violations=[]),
         ):
             apply_user_edit(state, "main.tf", edited)

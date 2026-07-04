@@ -36,7 +36,7 @@ class TestEditRevert:
             "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.services.review.check_resource_allowlist",
+            "vibeops.services.review.check_dir_allowlist",
             return_value=__import__("unittest.mock", fromlist=["MagicMock"]).MagicMock(
                 ok=True, violations=[]
             ),
@@ -56,7 +56,7 @@ class TestEditRevert:
             "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.services.review.check_resource_allowlist",
+            "vibeops.services.review.check_dir_allowlist",
             return_value=__import__("unittest.mock", fromlist=["MagicMock"]).MagicMock(
                 ok=True, violations=[]
             ),
@@ -78,7 +78,7 @@ class TestEditRevert:
             "vibeops.services.review.validate",
             return_value=TerraformValidationResult(ok=True),
         ), patch(
-            "vibeops.services.review.check_resource_allowlist",
+            "vibeops.services.review.check_dir_allowlist",
             return_value=__import__("unittest.mock", fromlist=["MagicMock"]).MagicMock(
                 ok=True, violations=[]
             ),

@@ -60,6 +60,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   now painted with the app background, and the scrollbar track/corner are
   transparent. (`frontend/src/styles/globals.css`)
 
+### Security
+
+- **Hardened the Terraform resource allowlist against edit-time and deploy-time
+  bypasses (2026-07-03).** The review-screen allowlist only ran on `main.tf`, so a
+  disallowed resource (e.g. an IAM binding or storage bucket) added via `outputs.tf`
+  or any other file slipped through; the edit filename was also unsanitized, which
+  allowed writing outside the working directory (path traversal). Now every `*.tf`
+  file in the work dir is checked on each edit, the edit filename is restricted to a
+  strict whitelist (`main.tf`, `variables.tf`, `outputs.tf` — rejecting path
+  separators, `..`, and non-`.tf` names before anything is written to disk), and the
+  allowlist is re-validated immediately before `terraform apply` so a tampered or
+  unparseable config fails closed instead of deploying. (`src/vibeops/core/policy.py`,
+  `src/vibeops/services/review.py`, `src/vibeops/agents/deployment.py`)
+
 ## [2.0.1] - 2026-07-03
 
 ### Fixed

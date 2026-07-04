@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
 
+from vibeops.core.policy import check_dir_allowlist
 from vibeops.models.deployment import DeploymentOutcome, DeploymentPhase, StateResource
 from vibeops.models.spec import DeploymentSpec
 from vibeops.models.state import FlowStage, GraphState
@@ -130,6 +131,33 @@ def deployment_agent(
     # logs + a fake instance) so the end-to-end walkthrough works without credentials.
     if configurable.get("demo_mode"):
         return _demo_apply(state, configurable.get("on_log"))
+
+    # Fail closed: re-run the resource allowlist over the on-disk *.tf files immediately before
+    # deploying. The review-time check can be bypassed if the files are tampered with afterwards,
+    # so this is the last line of defence — a disallowed (or unparseable) resource blocks apply.
+    try:
+        allowlist_result = check_dir_allowlist(work_dir)
+    except Exception as exc:
+        return state.model_copy(
+            update={
+                "deployment_phase": DeploymentPhase.FAILED,
+                "deployment_outcome": DeploymentOutcome.PLAN_FAILED,
+                "deployment_error": f"Deploy blocked: could not verify resource allowlist ({exc}).",
+                "retry_requested": False,
+            }
+        )
+    if not allowlist_result.ok:
+        bad = sorted({v.resource_type for v in allowlist_result.violations})
+        return state.model_copy(
+            update={
+                "deployment_phase": DeploymentPhase.FAILED,
+                "deployment_outcome": DeploymentOutcome.PLAN_FAILED,
+                "deployment_error": (
+                    f"Deploy blocked: resource type(s) not in allowlist: {', '.join(bad)}."
+                ),
+                "retry_requested": False,
+            }
+        )
 
     # Reset on retry
     base_logs: list[str] = [] if state.retry_requested else list(state.deployment_logs)
