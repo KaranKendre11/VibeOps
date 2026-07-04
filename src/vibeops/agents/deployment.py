@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import json
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Optional
@@ -102,10 +101,7 @@ def _write_tfvars(work_dir: Path, spec: DeploymentSpec) -> None:
 
 def _write_credentials(work_dir: Path, gcp_ctx: Any) -> None:
     """Write sa_credentials.json so GOOGLE_APPLICATION_CREDENTIALS is set by _tf_env."""
-    (work_dir / "sa_credentials.json").write_text(
-        json.dumps(gcp_ctx.service_account_info),
-        encoding="utf-8",
-    )
+    runner.write_sa_credentials(work_dir, gcp_ctx.service_account_info)
 
 
 def deployment_agent(

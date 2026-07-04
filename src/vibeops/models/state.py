@@ -69,6 +69,11 @@ class GraphState(BaseModel):
     terraform_files: dict[str, str] = Field(default_factory=dict)
     terraform_files_original: dict[str, str] = Field(default_factory=dict)
     terraform_dir: str | None = Field(default=None)
+    terraform_state_prefix: str | None = Field(
+        default=None,
+        description="GCS object prefix keying this deployment's remote Terraform state "
+        "(issue #3). None when no remote backend is configured (ephemeral local state).",
+    )
     cost_estimate_usd: float | None = Field(default=None)
     cost_estimate: CostEstimate | None = Field(default=None)
     cost_cap_exceeded: bool = Field(default=False)

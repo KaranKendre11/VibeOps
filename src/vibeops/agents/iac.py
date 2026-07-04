@@ -24,8 +24,15 @@ from vibeops.cost.pricing_constants import (
 from vibeops.models.iac import CostEstimate, CostLineItem
 from vibeops.models.spec import DeploymentSpec
 from vibeops.models.state import FlowStage, GraphState
+from vibeops.terraform.backend import configure_backend
 from vibeops.terraform.render import render_templates
-from vibeops.terraform.runner import TerraformInitError, TerraformValidateError, init, validate
+from vibeops.terraform.runner import (
+    TerraformInitError,
+    TerraformValidateError,
+    init,
+    validate,
+    write_sa_credentials,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -272,10 +279,23 @@ def _real_pipeline(state: GraphState, llm: LLMClient, gcp_ctx: Any | None) -> Gr
 
     tf_files_original = dict(rendered)
 
-    # Step 4: terraform init + validate
+    # Step 4: configure remote state backend (issue #3), then terraform init + validate.
+    # When VIBEOPS_TF_STATE_BUCKET is set, configure_backend writes backend.tf and returns the
+    # GCS location; we also drop the service-account key so `init` can authenticate to the bucket
+    # (and `destroy` later operates on the persisted state). When unset, backend is None -> local
+    # ephemeral state and configure_backend logs a warning.
+    backend = configure_backend(tmp_dir, project_id=spec.project_id)
+    if backend is not None and gcp_ctx is not None:
+        write_sa_credentials(tmp_dir, gcp_ctx.service_account_info)
+    elif backend is not None:
+        logger.warning(
+            "Remote Terraform state backend is configured but no GCP credentials are "
+            "available; `terraform init` may fail to authenticate to the state bucket."
+        )
+
     validation_errors: list[str] = []
     try:
-        init(tmp_dir)
+        init(tmp_dir, backend_config=backend.init_args() if backend else None)
         result = validate(tmp_dir)
         if not result.ok:
             validation_errors = result.errors
@@ -326,6 +346,7 @@ def _real_pipeline(state: GraphState, llm: LLMClient, gcp_ctx: Any | None) -> Gr
             "terraform_files": rendered,
             "terraform_files_original": tf_files_original,
             "terraform_dir": str(tmp_dir),
+            "terraform_state_prefix": backend.prefix if backend else None,
             "cost_estimate": cost_estimate,
             "cost_estimate_usd": cost_estimate.monthly_usd if cost_estimate else None,
             "cost_cap_exceeded": cost_cap_exceeded,

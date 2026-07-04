@@ -20,6 +20,23 @@ class TerraformInitError(Exception):
     pass
 
 
+# Service-account key file dropped into a work dir so terraform authenticates to GCP (both the
+# Google provider and, when configured, the GCS state backend). Consumed by ``_tf_env``.
+SA_CREDENTIALS_FILENAME = "sa_credentials.json"
+
+
+def write_sa_credentials(work_dir: Path, service_account_info: dict[str, object]) -> None:
+    """Write ``sa_credentials.json`` into ``work_dir`` for terraform to authenticate with.
+
+    ``_tf_env`` picks this up and sets ``GOOGLE_APPLICATION_CREDENTIALS`` so both the Google
+    provider and (when enabled) the GCS state backend authenticate with the service account.
+    """
+    (work_dir / SA_CREDENTIALS_FILENAME).write_text(
+        json.dumps(service_account_info),
+        encoding="utf-8",
+    )
+
+
 def _find_terraform() -> str:
     """Resolve the terraform executable path.
 
@@ -73,7 +90,7 @@ def _tf_env(work_dir: Path | None = None) -> dict[str, str]:
     cache_dir.mkdir(parents=True, exist_ok=True)
     env = {**os.environ, "TF_PLUGIN_CACHE_DIR": str(cache_dir)}
     if work_dir is not None:
-        creds_file = work_dir / "sa_credentials.json"
+        creds_file = work_dir / SA_CREDENTIALS_FILENAME
         if creds_file.is_file():
             env["GOOGLE_APPLICATION_CREDENTIALS"] = str(creds_file)
     return env
@@ -83,14 +100,26 @@ class TerraformValidateError(Exception):
     pass
 
 
-def init(work_dir: Path, timeout: int = 300) -> None:
+def init(
+    work_dir: Path,
+    timeout: int = 300,
+    backend_config: list[str] | None = None,
+) -> None:
     """Run `terraform init` in work_dir.
+
+    When ``backend_config`` is given (e.g. ``["-backend-config=bucket=...",
+    "-backend-config=prefix=..."]``), the flags are appended so terraform initializes the
+    configured remote backend. When ``None``, terraform uses whatever backend the config
+    declares (local state by default).
 
     Raises TerraformInitError on non-zero exit or timeout.
     """
+    cmd = [_find_terraform(), "init", "-no-color", "-input=false"]
+    if backend_config:
+        cmd.extend(backend_config)
     try:
         proc = subprocess.run(
-            [_find_terraform(), "init", "-no-color", "-input=false"],
+            cmd,
             cwd=work_dir,
             capture_output=True,
             text=True,
