@@ -84,7 +84,14 @@ class TestGraphM4HappyPath:
 
         graph = build_graph()
         thread: dict[str, Any] = {
-            "configurable": {"thread_id": "m4-happy", "llm_client": llm, "gcp_context": ctx}
+            "configurable": {
+                "thread_id": "m4-happy",
+                "llm_client": llm,
+                "gcp_context": ctx,
+                # High cap so the representative ~$550/mo plan isn't gated by the cost cap —
+                # this test exercises the full deploy flow, not the cost-cap enforcement.
+                "cost_cap_usd": 10_000.0,
+            }
         }
         initial = GraphState(user_prompt="deploy T4 VM")
         tmp = tempfile.mkdtemp()

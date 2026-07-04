@@ -11,6 +11,7 @@ import hcl2
 from langchain_core.runnables import RunnableConfig
 
 from vibeops.agents.iac_prompts import FRAGMENT_RETRY_PROMPT, FRAGMENT_SYSTEM_PROMPT
+from vibeops.config import AppConfig
 from vibeops.core.llm import LLMClient
 from vibeops.core.policy import check_resource_allowlist
 from vibeops.cost.pricing_constants import (
@@ -35,9 +36,6 @@ from vibeops.terraform.runner import (
 )
 
 logger = logging.getLogger(__name__)
-
-# Cost-cap from setup (USD / month).  Will be read from state/session in a future milestone.
-_DEFAULT_COST_CAP_USD = 500.0
 
 # Stub HCL — used when no LLM config is present (keeps M1/M2 tests passing).
 _STUB_MAIN_TF = """\
@@ -117,11 +115,18 @@ def iac_agent(state: GraphState, config: Optional[RunnableConfig] = None) -> Gra
     llm: LLMClient | None = None
     gcp_ctx: Any | None = None
     demo_mode = False
+    # The monthly cost cap is the session's single source of truth (injected via the graph
+    # `configurable` in api.graph_runtime.thread_config). Fall back to the app default only when
+    # no cap was threaded through (e.g. some unit tests build the config by hand).
+    cost_cap_usd = AppConfig().default_cost_cap_usd
     if config:
         configurable: dict[str, Any] = config.get("configurable") or {}
         llm = configurable.get("llm_client")
         gcp_ctx = configurable.get("gcp_context")
         demo_mode = bool(configurable.get("demo_mode"))
+        cap = configurable.get("cost_cap_usd")
+        if cap is not None:
+            cost_cap_usd = float(cap)
 
     # Demo mode ALWAYS uses the offline demo pipeline — never a real LLM/GCP call, even if a
     # client leaked into the session from a prior authenticated flow (Reconfigure -> demo).
@@ -131,7 +136,7 @@ def iac_agent(state: GraphState, config: Optional[RunnableConfig] = None) -> Gra
     if llm is None or state.deployment_spec is None:
         return _stub_fallback(state)
 
-    return _real_pipeline(state, llm, gcp_ctx)
+    return _real_pipeline(state, llm, gcp_ctx, cost_cap_usd)
 
 
 # ---------------------------------------------------------------------------
@@ -260,7 +265,9 @@ def _demo_cost_estimate(spec: DeploymentSpec) -> CostEstimate:
 # ---------------------------------------------------------------------------
 
 
-def _real_pipeline(state: GraphState, llm: LLMClient, gcp_ctx: Any | None) -> GraphState:
+def _real_pipeline(
+    state: GraphState, llm: LLMClient, gcp_ctx: Any | None, cost_cap_usd: float
+) -> GraphState:
     spec = state.deployment_spec
     assert spec is not None  # guarded by caller
 
@@ -324,10 +331,10 @@ def _real_pipeline(state: GraphState, llm: LLMClient, gcp_ctx: Any | None) -> Gr
     except Exception as exc:
         logger.warning("Cost estimation failed: %s", exc)
 
-    # Step 7: cost-cap check
+    # Step 7: cost-cap check (against the session's cap — the single source of truth)
     cost_cap_exceeded = False
     if cost_estimate is not None:
-        cost_cap_exceeded = cost_estimate.monthly_usd > _DEFAULT_COST_CAP_USD
+        cost_cap_exceeded = cost_estimate.monthly_usd > cost_cap_usd
 
     # Step 8: build chat message
     if validation_errors:

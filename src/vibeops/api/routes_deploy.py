@@ -12,8 +12,9 @@ import threading
 from collections.abc import Iterator
 from typing import Any
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 
 from vibeops.api.deps import SessionDep
 from vibeops.api.graph_runtime import derive_stage, get_graph, thread_config
@@ -76,11 +77,49 @@ def _record_demo_result(session: Session) -> None:
         session.demo_vms = []
 
 
+class DeployStartIn(BaseModel):
+    override_cost_cap: bool = False
+
+
+def _current_graph_state(session: Session) -> GraphState | None:
+    """Best-effort read of the paused GraphState; ``None`` when no checkpoint exists yet."""
+    try:
+        values = get_graph(session).get_state(thread_config(session)).values
+    except Exception:
+        return None
+    if not values:
+        return None
+    try:
+        return GraphState.model_validate(values)
+    except Exception:
+        return None
+
+
 @router.post("/start")
-def start_deploy(session: SessionDep) -> dict[str, str]:
-    """Approve + launch deployment in the background. Stream /api/deploy/logs for live output."""
+def start_deploy(
+    session: SessionDep,
+    body: DeployStartIn | None = None,
+) -> dict[str, str]:
+    """Approve + launch deployment in the background. Stream /api/deploy/logs for live output.
+
+    Enforces the monthly cost cap server-side — the check a direct API call cannot bypass: an
+    over-cap plan (``cost_cap_exceeded``) is rejected with 409 unless the caller explicitly opts
+    in with ``override_cost_cap``. The override is recorded on the graph state so the
+    ``approval_router`` gate agrees.
+    """
+    override = bool(body.override_cost_cap) if body else False
+    state = _current_graph_state(session)
+    if state is not None and state.cost_cap_exceeded and not override:
+        raise HTTPException(
+            status_code=409,
+            detail=(
+                f"Estimated monthly cost exceeds your cap of "
+                f"${session.monthly_cost_cap_usd:,.2f}. Reduce the spec and re-estimate, "
+                f"or resubmit with override to deploy anyway."
+            ),
+        )
     track("deploy_approved", session_id=session.thread_id)
-    _launch(session, {"approved": True})
+    _launch(session, {"approved": True, "cost_cap_override": override})
     return {"status": "started"}
 
 
