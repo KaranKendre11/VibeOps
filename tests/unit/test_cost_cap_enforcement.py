@@ -218,3 +218,15 @@ def test_no_hardcoded_cost_cap_constant_remains() -> None:
     import vibeops.agents.iac as iac_mod
 
     assert not hasattr(iac_mod, "_DEFAULT_COST_CAP_USD")
+
+
+def test_demo_mode_is_never_cost_gated() -> None:
+    """Demo deploys are simulated (no real spend), so the cap must not gate them."""
+    from vibeops.agents.architecture import architecture_agent
+    from vibeops.agents.requirement import requirement_agent
+
+    spec_state = architecture_agent(requirement_agent(GraphState(user_prompt="a T4 for Jupyter")))
+    # Tiny cap: the representative demo cost is far above it, yet demo must not be flagged.
+    result = iac_agent(spec_state, {"configurable": {"demo_mode": True, "cost_cap_usd": 1.0}})
+    assert result.cost_estimate_usd is not None and result.cost_estimate_usd > 1.0
+    assert result.cost_cap_exceeded is False

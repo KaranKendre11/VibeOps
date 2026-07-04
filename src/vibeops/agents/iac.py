@@ -131,7 +131,7 @@ def iac_agent(state: GraphState, config: Optional[RunnableConfig] = None) -> Gra
     # Demo mode ALWAYS uses the offline demo pipeline — never a real LLM/GCP call, even if a
     # client leaked into the session from a prior authenticated flow (Reconfigure -> demo).
     if demo_mode and state.deployment_spec is not None:
-        return _demo_pipeline(state, cost_cap_usd)
+        return _demo_pipeline(state)
 
     if llm is None or state.deployment_spec is None:
         return _stub_fallback(state)
@@ -178,7 +178,7 @@ def _stub_fallback(state: GraphState) -> GraphState:
 # ---------------------------------------------------------------------------
 
 
-def _demo_pipeline(state: GraphState, cost_cap_usd: float) -> GraphState:
+def _demo_pipeline(state: GraphState) -> GraphState:
     """Render real Terraform from the spec + attach a representative offline cost.
 
     Used only in demo mode. No terraform init/validate/apply and no GCP calls.
@@ -206,7 +206,6 @@ def _demo_pipeline(state: GraphState, cost_cap_usd: float) -> GraphState:
             "terraform_dir": str(tmp_dir),
             "cost_estimate": cost,
             "cost_estimate_usd": cost.monthly_usd,
-            "cost_cap_exceeded": cost.monthly_usd > cost_cap_usd,
             "cost_estimate_stale": False,
             "stage": FlowStage.AWAITING_APPROVAL,
             "chat_history": state.chat_history
