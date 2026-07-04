@@ -81,6 +81,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Smoother hero cursor-scrub on the landing page (issue #36, 2026-07-04).** The
+  llama's head-follow now eases the video playhead toward the cursor target with a
+  `requestAnimationFrame` lerp (one smoothed seek per frame) instead of hard-seeking
+  on every `mousemove`, so the motion glides instead of stepping. Desktop-only; touch
+  autoplay and reduced-motion behavior are unchanged.
+  (`frontend/src/landing/LandingScreen.tsx`)
+
 - **Landing background videos now boomerang-loop (forward→reverse, no cut) and
   are upscaled (issue #37, 2026-07-04).** The cinematic, metrics, capabilities and
   finale clips play forward then reverse seamlessly on loop instead of hard-cutting

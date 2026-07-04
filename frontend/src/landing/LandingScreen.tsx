@@ -246,32 +246,33 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
       return;
     }
 
+    const START = 0.05;
     let duration = 0;
-    let target = 0;
-    let seeking = false;
+    let target = START; // where the cursor wants the playhead (updated on mousemove)
+    let current = START; // where it actually is (eased toward target each frame)
+    let rafId: number | null = null;
 
     // Nudge a frame so the paused hero shows imagery instead of a black rectangle
     // before the first scrub (and always, under reduced motion).
     const onMeta = () => {
       duration = video.duration || 0;
-      if (video.currentTime === 0) video.currentTime = 0.05;
-    };
-    const onSeeked = () => {
-      if (!seeking) return;
-      if (Math.abs(video.currentTime - target) > 0.01) {
-        video.currentTime = target;
-      } else {
-        seeking = false;
-      }
+      if (video.currentTime === 0) video.currentTime = START;
     };
     const onMove = (e: MouseEvent) => {
       if (!duration) return;
       const step = (e.movementX * 0.8 * duration) / Math.max(1, window.innerWidth);
       target = Math.min(duration - 0.05, Math.max(0, target + step));
-      if (!seeking) {
-        seeking = true;
-        video.currentTime = target;
+    };
+    // Ease the playhead toward the target once per frame (lerp) so the head glides
+    // instead of stepping — one smoothed seek per rAF, not a hard seek per mousemove
+    // event. Skips the seek once settled so an idle hero stays cheap.
+    const EASE = 0.18;
+    const tick = () => {
+      if (duration && Math.abs(target - current) > 0.001) {
+        current += (target - current) * EASE;
+        video.currentTime = current;
       }
+      rafId = requestAnimationFrame(tick);
     };
 
     video.addEventListener('loadedmetadata', onMeta);
@@ -282,12 +283,12 @@ function Hero({ entranceComplete, onEnter }: { entranceComplete: boolean; onEnte
       return () => video.removeEventListener('loadedmetadata', onMeta);
     }
 
-    video.addEventListener('seeked', onSeeked);
     window.addEventListener('mousemove', onMove);
+    rafId = requestAnimationFrame(tick);
     return () => {
       video.removeEventListener('loadedmetadata', onMeta);
-      video.removeEventListener('seeked', onSeeked);
       window.removeEventListener('mousemove', onMove);
+      if (rafId != null) cancelAnimationFrame(rafId);
     };
   }, [reduce, autoplay]);
 
