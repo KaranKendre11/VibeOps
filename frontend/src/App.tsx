@@ -57,21 +57,29 @@ export default function App() {
 
   return (
     <MotionConfig reducedMotion="user">
-      <AmbientBlobs />
-      <Chrome />
-      <main className="min-h-screen pt-16 sm:pt-20">
-        {showJourney && (
-          <div className="px-4 pb-2 pt-4">
-            <JourneyLine />
-          </div>
-        )}
-        <AnimatePresence mode="wait">
-          <motion.div key={key} {...screenTransition}>
-            {node}
-          </motion.div>
-        </AnimatePresence>
-      </main>
-      <InventoryDialog />
+      {/* Own stacking context (`isolate`) so AmbientBlobs' `-z-10` field is scoped
+          here and paints ABOVE the opaque html/body/#root background — not behind
+          it. Those roots are painted dark so the scrollbar gutter isn't white; but
+          a bare `fixed -z-10` element escapes to the *root* stacking context, where
+          that opaque #root/body background then covers it, leaving in-app screens
+          flat black. Trapping it in this context keeps the Plexus/nebula visible. */}
+      <div className="isolate">
+        <AmbientBlobs />
+        <Chrome />
+        <main className="min-h-screen pt-16 sm:pt-20">
+          {showJourney && (
+            <div className="px-4 pb-2 pt-4">
+              <JourneyLine />
+            </div>
+          )}
+          <AnimatePresence mode="wait">
+            <motion.div key={key} {...screenTransition}>
+              {node}
+            </motion.div>
+          </AnimatePresence>
+        </main>
+        <InventoryDialog />
+      </div>
     </MotionConfig>
   );
 }
