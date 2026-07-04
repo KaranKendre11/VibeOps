@@ -17,6 +17,7 @@ from vibeops.api.routes_deploy import router as deploy_router
 from vibeops.api.routes_graph import router as graph_router
 from vibeops.api.routes_inventory import router as inventory_router
 from vibeops.api.routes_review import router as review_router
+from vibeops.api.routes_session import router as session_router
 from vibeops.api.routes_setup import router as setup_router
 from vibeops.api.session import SESSION_COOKIE, get_store
 from vibeops.config import AppConfig
@@ -31,6 +32,7 @@ app.include_router(deploy_router)
 app.include_router(graph_router)
 app.include_router(inventory_router)
 app.include_router(review_router)
+app.include_router(session_router)
 app.include_router(setup_router)
 
 

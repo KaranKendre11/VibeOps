@@ -1,6 +1,7 @@
 import { Wordmark } from './Wordmark';
 import { BrandIcon } from './BrandIcon';
 import { ScrambleHover } from './scramble';
+import { api } from '../api/client';
 import { useStore } from '../store/useStore';
 
 /** Corner-anchored persistent chrome: wordmark (top-left), status + inventory
@@ -10,6 +11,20 @@ export function Chrome() {
   const demoMode = useStore((s) => s.demoMode);
   const setInventoryOpen = useStore((s) => s.setInventoryOpen);
   const exitToLanding = useStore((s) => s.exitToLanding);
+  const reset = useStore((s) => s.reset);
+
+  // Full sign-out: wipe credentials/setup server-side, drop all client state, and
+  // return to the landing gate. Distinct from the soft "×" (which keeps the session).
+  async function clearCredentialsAndExit() {
+    try {
+      await api.resetCredentials();
+    } catch {
+      // Even if the server call fails, still wipe local state and leave — the
+      // in-memory session is short-lived and never persisted.
+    }
+    reset();
+    exitToLanding();
+  }
 
   return (
     <>
@@ -35,10 +50,19 @@ export function Chrome() {
             <ScrambleHover text="VM Inventory" />
           </button>
         )}
+        {setupComplete && (
+          <button
+            onClick={() => void clearCredentialsAndExit()}
+            title="Clear your OpenAI key & GCP credentials and return to the landing page"
+            className="liquid-glass rounded-pill px-4 py-2 text-xs text-fg-muted transition-colors duration-300 ease-quint hover:text-red-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
+          >
+            <ScrambleHover text="Clear credentials" />
+          </button>
+        )}
         <button
           onClick={exitToLanding}
-          aria-label="Exit to home"
-          title="Exit to home"
+          aria-label="Return to home (keeps your session)"
+          title="Return to home — your session and credentials stay active"
           className="liquid-glass grid h-9 w-9 place-items-center rounded-pill text-fg-muted transition-colors duration-300 ease-quint hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-4 focus-visible:ring-offset-bg"
         >
           <svg
