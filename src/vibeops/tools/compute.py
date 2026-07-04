@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
+
 from google.api_core import exceptions as gcp_exceptions
 from google.cloud import compute_v1
 
@@ -52,11 +54,14 @@ def _cache_key(*parts: object) -> tuple[object, ...]:
     return tuple(parts)
 
 
-def list_zones_with_accelerator(ctx: GcpContext, gpu_type: str) -> ZonesWithAcceleratorResult:
+def list_zones_with_accelerator(
+    ctx: GcpContext, gpu_type: str, *, use_cache: bool = True
+) -> ZonesWithAcceleratorResult:
     key = _cache_key("list_zones_with_accelerator", gpu_type)
-    cached = ctx.get_cached(key)
-    if cached is not None:
-        return cached  # type: ignore[return-value]
+    if use_cache:
+        cached = ctx.get_cached(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
     try:
         client = compute_v1.AcceleratorTypesClient(credentials=ctx.credentials)
         pager = client.aggregated_list(project=ctx.project_id)
@@ -86,12 +91,13 @@ def list_zones_with_accelerator(ctx: GcpContext, gpu_type: str) -> ZonesWithAcce
 
 
 def list_machine_types(
-    ctx: GcpContext, zone: str, gpu_compatible: bool = True
+    ctx: GcpContext, zone: str, gpu_compatible: bool = True, *, use_cache: bool = True
 ) -> MachineTypesResult:
     key = _cache_key("list_machine_types", zone, gpu_compatible)
-    cached = ctx.get_cached(key)
-    if cached is not None:
-        return cached  # type: ignore[return-value]
+    if use_cache:
+        cached = ctx.get_cached(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
     try:
         client = compute_v1.MachineTypesClient(credentials=ctx.credentials)
         pager = client.list(project=ctx.project_id, zone=zone)
@@ -272,11 +278,14 @@ def delete_instance(ctx: GcpContext, zone: str, name: str) -> None:
         raise GCPToolError(f"delete_instance failed for {name} in {zone}: {exc}") from exc
 
 
-def get_accelerator_quota(ctx: GcpContext, region: str, gpu_type: str) -> QuotaResult:
+def get_accelerator_quota(
+    ctx: GcpContext, region: str, gpu_type: str, *, use_cache: bool = True
+) -> QuotaResult:
     key = _cache_key("get_accelerator_quota", region, gpu_type)
-    cached = ctx.get_cached(key)
-    if cached is not None:
-        return cached  # type: ignore[return-value]
+    if use_cache:
+        cached = ctx.get_cached(key)
+        if cached is not None:
+            return cached  # type: ignore[return-value]
     metric = _GPU_QUOTA_METRICS.get(gpu_type, f"NVIDIA_{gpu_type.upper()}_GPUS")
     try:
         client = compute_v1.RegionsClient(credentials=ctx.credentials)
@@ -295,3 +304,74 @@ def get_accelerator_quota(ctx: GcpContext, region: str, gpu_type: str) -> QuotaR
         return result
     except gcp_exceptions.GoogleAPICallError as exc:
         raise GCPToolError(f"get_accelerator_quota failed: {exc}") from exc
+
+
+@dataclass(frozen=True)
+class AvailabilityStatus:
+    """Outcome of the pre-apply availability + quota re-check for a chosen machine/zone.
+
+    ``available`` is the overall verdict. When it is False, ``reason`` carries a human-readable,
+    actionable explanation and the individual flags record which check failed.
+    """
+
+    available: bool
+    reason: str = ""
+    machine_type_available: bool = True
+    accelerator_available: bool = True
+    quota_remaining: int = 0
+    quota_required: int = 0
+
+
+def check_machine_availability(
+    ctx: GcpContext,
+    *,
+    machine_type: str,
+    zone: str,
+    gpu_type: str,
+    gpu_count: int = 1,
+) -> AvailabilityStatus:
+    """Re-verify a chosen machine type + GPU are still available and within quota in ``zone``.
+
+    Reuses the discovery-time wrappers with ``use_cache=False`` so the pre-apply gate sees a
+    fresh view of GCP capacity/quota — the session cache is populated at architecture-selection
+    time, which can be several minutes stale by the time the user approves and deploys. Any
+    ``GCPToolError`` from the underlying calls propagates to the caller, which decides how to
+    treat an inconclusive check (the deploy agent proceeds and lets terraform be the backstop).
+    """
+    region = "-".join(zone.split("-")[:-1])
+
+    machines = list_machine_types(ctx, zone, gpu_compatible=False, use_cache=False)
+    machine_type_available = any(m.name == machine_type for m in machines.machine_types)
+
+    zones = list_zones_with_accelerator(ctx, gpu_type, use_cache=False)
+    accelerator_available = any(z.zone == zone for z in zones.zones)
+
+    quota = get_accelerator_quota(ctx, region, gpu_type, use_cache=False)
+    quota_remaining = quota.remaining
+    quota_ok = quota_remaining >= gpu_count
+
+    if machine_type_available and accelerator_available and quota_ok:
+        return AvailabilityStatus(
+            available=True,
+            quota_remaining=quota_remaining,
+            quota_required=gpu_count,
+        )
+
+    reasons: list[str] = []
+    if not machine_type_available:
+        reasons.append(f"machine type '{machine_type}' is no longer offered in zone {zone}")
+    if not accelerator_available:
+        reasons.append(f"GPU '{gpu_type}' is no longer available in zone {zone}")
+    if not quota_ok:
+        reasons.append(
+            f"only {quota_remaining} {gpu_type} GPU(s) remain in the {region} quota "
+            f"but {gpu_count} are required"
+        )
+    return AvailabilityStatus(
+        available=False,
+        reason="; ".join(reasons),
+        machine_type_available=machine_type_available,
+        accelerator_available=accelerator_available,
+        quota_remaining=quota_remaining,
+        quota_required=gpu_count,
+    )

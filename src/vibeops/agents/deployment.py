@@ -6,6 +6,7 @@ from typing import Any, Optional
 
 from langchain_core.runnables import RunnableConfig
 
+from vibeops.core.gcp_context import GcpContext
 from vibeops.core.policy import check_dir_allowlist
 from vibeops.models.deployment import DeploymentOutcome, DeploymentPhase, StateResource
 from vibeops.models.spec import DeploymentSpec
@@ -13,6 +14,12 @@ from vibeops.models.state import FlowStage, GraphState
 from vibeops.terraform import runner
 from vibeops.terraform.error_parser import parse_error
 from vibeops.terraform.errors import TerraformApplyError, TerraformDestroyError, TerraformPlanError
+from vibeops.tools.compute import check_machine_availability
+
+# Parsed-error codes (see terraform.error_parser) that mean the chosen zone can't serve the VM
+# right now. When terraform apply fails with one of these we record the zone in excluded_zones so
+# a re-discovery skips it.
+_ZONE_LEVEL_ERROR_CODES = frozenset({"insufficient_resources", "zone_unavailable"})
 
 
 def _make_on_log(
@@ -159,6 +166,48 @@ def deployment_agent(
             }
         )
 
+    # Re-validate that the selected machine type + GPU are still available and within quota in
+    # the chosen zone. Capacity and quota can shift between architecture selection and deploy, so
+    # we catch it here with an actionable message instead of surfacing a raw ``terraform apply``
+    # failure. Best-effort: an inconclusive check (e.g. the availability API can't be reached)
+    # must not block a valid deploy — terraform stays the backstop — so we only fail on a
+    # definitive "unavailable" verdict, and record the zone so a re-discovery can skip it.
+    # The live probe needs a real GcpContext (credentials + session cache); guard on the concrete
+    # type so callers that inject a stand-in context (tests, or any future non-GCP context) skip
+    # the network probe instead of erroring against it.
+    spec = state.deployment_spec
+    if spec is not None and type(gcp_ctx) is GcpContext:
+        compute_spec = spec.compute
+        try:
+            availability = check_machine_availability(
+                gcp_ctx,
+                machine_type=compute_spec.machine_type,
+                zone=compute_spec.zone,
+                gpu_type=compute_spec.gpu_type.value,
+                gpu_count=compute_spec.gpu_count,
+            )
+        except Exception:  # noqa: BLE001 — an inconclusive check must not block a valid deploy
+            availability = None
+        if availability is not None and not availability.available:
+            zone = compute_spec.zone
+            excluded = list(state.excluded_zones)
+            if zone not in excluded:
+                excluded.append(zone)
+            return state.model_copy(
+                update={
+                    "deployment_phase": DeploymentPhase.FAILED,
+                    "deployment_outcome": DeploymentOutcome.PLAN_FAILED,
+                    "deployment_error": (
+                        f"Deploy blocked: {compute_spec.machine_type} in {zone} is no longer "
+                        f"deployable ({availability.reason}). Zone {zone} has been excluded — "
+                        "go back to architecture to pick another candidate, or retry to "
+                        "re-discover available zones."
+                    ),
+                    "excluded_zones": excluded,
+                    "retry_requested": False,
+                }
+            )
+
     # Reset on retry
     base_logs: list[str] = [] if state.retry_requested else list(state.deployment_logs)
 
@@ -193,16 +242,22 @@ def deployment_agent(
             DeploymentOutcome.PARTIAL_FAIL if exc.partial_state else DeploymentOutcome.FULL_FAIL
         )
         parsed = parse_error(exc.stderr)
-        return state.model_copy(
-            update={
-                "deployment_phase": DeploymentPhase.FAILED,
-                "deployment_outcome": outcome,
-                "deployment_error": parsed.summary,
-                "deployment_logs": base_logs + apply_logs + exc.stderr.splitlines(),
-                "created_resources": exc.created_resources,
-                "retry_requested": False,
-            }
-        )
+        apply_update: dict[str, Any] = {
+            "deployment_phase": DeploymentPhase.FAILED,
+            "deployment_outcome": outcome,
+            "deployment_error": parsed.summary,
+            "deployment_logs": base_logs + apply_logs + exc.stderr.splitlines(),
+            "created_resources": exc.created_resources,
+            "retry_requested": False,
+        }
+        # A zone-level capacity/availability failure means the chosen zone can't serve this VM
+        # right now — record it so a re-discovery skips it (mirrors the pre-apply availability
+        # gate, and matches the parser's "re-run zone discovery excluding this zone" hint).
+        if parsed.code in _ZONE_LEVEL_ERROR_CODES and state.deployment_spec is not None:
+            failed_zone = state.deployment_spec.compute.zone
+            if failed_zone not in state.excluded_zones:
+                apply_update["excluded_zones"] = list(state.excluded_zones) + [failed_zone]
+        return state.model_copy(update=apply_update)
 
     created = runner.parse_state_resources(work_dir)
     all_logs = base_logs + apply_logs + result.full_log.splitlines()
